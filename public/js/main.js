@@ -108,8 +108,11 @@ function initChat() {
               a.innerHTML = '<span class="action-icon">&#9889;</span> ' + (j.data.label || j.data.action);
               messages.appendChild(a);
               messages.scrollTop = messages.scrollHeight;
-              if (j.data.action === 'select_part' && window._sandboxSelectPart) window._sandboxSelectPart(j.data.category, j.data.partId, j.data.partName, j.data.partPrice, j.data.partSpecs);
-              if (j.data.action === 'buy_and_select' && window._sandboxBuyAndSelect) window._sandboxBuyAndSelect(j.data.category, j.data.partId, j.data.partName, j.data.partPrice, j.data.partSpecs);
+              if (j.data.action === 'buy_and_select' || j.data.action === 'select_part') {
+                addToInventory({ id: j.data.partId, name: j.data.partName, price: j.data.partPrice || 0, category: j.data.category, specs: j.data.partSpecs || {}, type: 'part', boughtAt: Date.now() });
+                if (window._sandboxSelectPart) window._sandboxSelectPart(j.data.category, j.data.partId, j.data.partName, j.data.partPrice, j.data.partSpecs);
+                if (window._refreshSandboxSidebar) window._refreshSandboxSidebar();
+              }
               if (j.data.action === 'install_os' && window._sandboxInstallOS) window._sandboxInstallOS(j.data.osName);
             }
             else if (j.type === 'done') el.classList.remove('streaming');
@@ -449,17 +452,47 @@ function initSandbox() {
       }
       else if (d.browser) openBrowser(d.browser);
       else if (d.ai) {
-        writeOut('Thinking...', 'output-line-info');
+        const agentName = localStorage.getItem('cortex-agent-name') || 'Nyx';
+        writeOut(agentName + ' is thinking...', 'output-line-info');
+        try {
+          const ar = await fetch('/api/brain-agent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: d.ai, history: [], name: agentName })
+          });
+          const rd = ar.body.getReader();
+          const dc = new TextDecoder();
+          let buf = '', reply = '';
+          while (true) {
+            const { done, value } = await rd.read();
+            if (done) break;
+            buf += dc.decode(value, { stream: true });
+            const ls = buf.split('\n');
+            buf = ls.pop() || '';
+            for (const l of ls) {
+              if (!l.startsWith('data: ')) continue;
+              try {
+                const j = JSON.parse(l.slice(6));
+                if (j.type === 'text') reply += j.data;
+              } catch (e) {}
+            }
+          }
+          writeOut('');
+          reply.split('\n').forEach(l => writeOut(l.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/`([^`]+)`/g, '$1'), 'output-line-info'));
+        } catch (e) { writeOut('Agent offline.', 'output-line-err'); }
+      }
+      else if (d.cortex) {
+        writeOut('Cortex-Assistant thinking...', 'output-line-info');
         try {
           const ar = await fetch('/api/sandbox/ai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: d.ai, osName: state?.env?.osName || 'BrainOS', specs: Object.values(rigSpecs) })
+            body: JSON.stringify({ prompt: d.cortex, osName: state?.env?.osName || 'BrainOS', specs: Object.values(rigSpecs) })
           });
           const ad = await ar.json();
           writeOut('');
           ad.reply.split('\n').forEach(l => writeOut(l.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/`([^`]+)`/g, '$1'), 'output-line-info'));
-        } catch (e) { writeOut('AI offline.', 'output-line-err'); }
+        } catch (e) { writeOut('Cortex offline.', 'output-line-err'); }
       }
       if (d.state) {
         state = d.state;
@@ -793,7 +826,7 @@ function initMyBrain() {
 
     grid.innerHTML = inv.map((item, idx) => {
       const isPb = item.type === 'prebuilt';
-      return '<div class="brain-item glass-card" data-idx="' + idx + '" data-id="' + item.id + '" data-type="' + item.type + '">' +
+      return '<div class="brain-item glass-card" data-idx="' + idx + '">' +
         '<div class="bi-header"><h3>' + item.name + '</h3><span class="bi-type">' + (isPb ? 'Prebuilt' : 'Part') + '</span></div>' +
         (item.category ? '<span class="bi-cat">' + item.category + '</span>' : '') +
         '<div class="bi-price">$' + item.price.toFixed(2) + '</div>' +
@@ -818,114 +851,4 @@ function initMyBrain() {
     });
   }
   render();
-
-  const agentNameInput = document.getElementById('agent-name');
-  const agentRenameBtn = document.getElementById('agent-rename');
-  const agentHeaderName = document.getElementById('agent-header-name');
-  const agentMessages = document.getElementById('agent-messages');
-  const agentInput = document.getElementById('agent-input');
-  const agentSend = document.getElementById('agent-send');
-  const agentStop = document.getElementById('agent-stop');
-  const agentClear = document.getElementById('agent-clear');
-  const agentWelcome = document.getElementById('agent-welcome');
-
-  if (!agentNameInput) return;
-
-  let agentName = localStorage.getItem('cortex-agent-name') || 'Nyx';
-  let agentHistory = [];
-  let agentAbort = null;
-
-  agentNameInput.value = agentName;
-  updateAgentName();
-
-  function updateAgentName() {
-    agentHeaderName.textContent = '\uD83D\uDCAC ' + agentName;
-    agentWelcome.textContent = "Hi! I'm " + agentName + ". I live in your brain. What's up?";
-  }
-
-  agentRenameBtn.onclick = () => {
-    const n = agentNameInput.value.trim();
-    if (n) { agentName = n; localStorage.setItem('cortex-agent-name', agentName); updateAgentName(); }
-  };
-
-  agentClear.onclick = () => {
-    agentHistory = [];
-    agentMessages.innerHTML = '';
-    agentMessages.appendChild(agentWelcome);
-  };
-
-  function addAgentMsg(h, c) {
-    const d = document.createElement('div');
-    d.className = 'chat-msg ' + c;
-    d.innerHTML = h;
-    agentMessages.appendChild(d);
-    agentMessages.scrollTop = agentMessages.scrollHeight;
-    return d;
-  }
-
-  function appendAgentTo(el, t) {
-    el._raw += t;
-    el.innerHTML = renderMarkdown(el._raw);
-    agentMessages.scrollTop = agentMessages.scrollHeight;
-  }
-
-  async function sendAgentMsg() {
-    const t = agentInput.value.trim();
-    if (!t) return;
-    addAgentMsg(t, 'user');
-    agentHistory.push({ role: 'user', content: t });
-    agentInput.value = '';
-    agentInput.disabled = true;
-    agentSend.disabled = true;
-    agentStop.classList.remove('hidden');
-
-    const el = addAgentMsg('', 'assistant streaming');
-    el._raw = '';
-
-    agentAbort = new AbortController();
-
-    try {
-      const r = await fetch('/api/brain-agent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: t, history: agentHistory, name: agentName }),
-        signal: agentAbort.signal
-      });
-      const rd = r.body.getReader();
-      const dc = new TextDecoder();
-      let buf = '';
-
-      while (true) {
-        const { done, value } = await rd.read();
-        if (done) break;
-        buf += dc.decode(value, { stream: true });
-        const ls = buf.split('\n');
-        buf = ls.pop() || '';
-        for (const l of ls) {
-          if (!l.startsWith('data: ')) continue;
-          try {
-            const j = JSON.parse(l.slice(6));
-            if (j.type === 'text') appendAgentTo(el, j.data);
-            else if (j.type === 'done') el.classList.remove('streaming');
-          } catch (e) {}
-        }
-      }
-      el.classList.remove('streaming');
-      agentHistory.push({ role: 'assistant', content: el._raw });
-    } catch (e) {
-      el.classList.remove('streaming');
-      if (e.name !== 'AbortError') appendAgentTo(el, '\n\nConnection lost.');
-      else appendAgentTo(el, ' [stopped]');
-    }
-
-    agentAbort = null;
-    agentInput.disabled = false;
-    agentSend.disabled = false;
-    agentStop.classList.add('hidden');
-    agentInput.focus();
-  }
-
-  agentSend.onclick = sendAgentMsg;
-  agentInput.onkeydown = e => { if (e.key === 'Enter') sendAgentMsg(); };
-  agentStop.onclick = () => { if (agentAbort) agentAbort.abort(); };
 }
