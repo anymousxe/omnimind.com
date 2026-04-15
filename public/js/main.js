@@ -108,7 +108,8 @@ function initChat() {
               a.innerHTML = '<span class="action-icon">&#9889;</span> ' + (j.data.label || j.data.action);
               messages.appendChild(a);
               messages.scrollTop = messages.scrollHeight;
-              if (j.data.action === 'select_part' && window._sandboxSelectPart) window._sandboxSelectPart(j.data.category, j.data.partId, j.data.partName);
+              if (j.data.action === 'select_part' && window._sandboxSelectPart) window._sandboxSelectPart(j.data.category, j.data.partId, j.data.partName, j.data.partPrice, j.data.partSpecs);
+              if (j.data.action === 'buy_and_select' && window._sandboxBuyAndSelect) window._sandboxBuyAndSelect(j.data.category, j.data.partId, j.data.partName, j.data.partPrice, j.data.partSpecs);
               if (j.data.action === 'install_os' && window._sandboxInstallOS) window._sandboxInstallOS(j.data.osName);
             }
             else if (j.type === 'done') el.classList.remove('streaming');
@@ -194,8 +195,11 @@ function initCheckout() {
         try {
           const r = await fetch('/api/part-info/' + itemId);
           const d = await r.json();
-          if (d.id) addToInventory({ id: d.id, name: d.name, price: d.price, category: d.category, specs: d.specs, type: 'part', boughtAt: Date.now() });
-        } catch (e) {}
+          if (d.id) {
+          addToInventory({ id: d.id, name: d.name, price: d.price, category: d.category, specs: d.specs, type: 'part', boughtAt: Date.now() });
+          if (window._refreshSandboxSidebar) window._refreshSandboxSidebar();
+        }
+      } catch (e) {}
       } else if (btn.classList.contains('pb-buy-btn') && itemName) {
         addToInventory({ id: 'pb-' + Date.now(), name: itemName, price: parseFloat(itemPrice) || 0, type: 'prebuilt', boughtAt: Date.now() });
       }
@@ -321,27 +325,25 @@ function initSandbox() {
     output.scrollTop = output.scrollHeight;
   }
 
-  async function loadSidebarParts() {
+  function loadSidebarParts() {
     const cats = ['Frontal Lobe CPUs', 'Cortical GPUs', 'Memory Caches', 'Internet Chips', 'Bio-Cooling', 'Synaptic Accelerators', 'Neuro-Link PSU'];
+    const inv = getInventory();
     for (const cat of cats) {
       const row = document.querySelector('.spec-row[data-cat="' + cat + '"]');
       if (!row) continue;
       const sel = row.querySelector('.spec-select');
-      try {
-        const r = await fetch('/api/sandbox/parts/' + encodeURIComponent(cat));
-        const parts = await r.json();
-        sel.innerHTML = '<option value="">-- None --</option>';
-        parts.forEach(p => {
-          const o = document.createElement('option');
-          o.value = JSON.stringify({ id: p.id, name: p.name, category: p.category, price: p.price, specs: p.specs });
-          o.textContent = p.name + ' -- $' + p.price.toFixed(2);
-          sel.appendChild(o);
-        });
-        if (rigSpecs[cat]) {
-          const match = parts.find(p => p.id === rigSpecs[cat].id);
-          if (match) sel.value = JSON.stringify(match);
-        }
-      } catch (e) {}
+      sel.innerHTML = '<option value="">-- None --</option>';
+      const catParts = inv.filter(i => i.category === cat && i.type === 'part');
+      catParts.forEach(p => {
+        const o = document.createElement('option');
+        o.value = JSON.stringify({ id: p.id, name: p.name, category: p.category, price: p.price, specs: p.specs || {} });
+        o.textContent = p.name + ' -- $' + (p.price || 0).toFixed(2);
+        sel.appendChild(o);
+      });
+      if (rigSpecs[cat]) {
+        const match = catParts.find(p => p.id === rigSpecs[cat].id);
+        if (match) sel.value = JSON.stringify({ id: match.id, name: match.name, category: match.category, price: match.price, specs: match.specs || {} });
+      }
       sel.onchange = () => {
         const v = sel.value;
         if (v) { rigSpecs[cat] = JSON.parse(v); } else { delete rigSpecs[cat]; }
@@ -353,15 +355,9 @@ function initSandbox() {
     updatePerfBars();
   }
 
-  function updatePerfBars() {
-    const score = (cat, base) => rigSpecs[cat] ? base + Math.floor(Math.random() * (100 - base)) : 5;
-    document.getElementById('perf-cpu').style.width = score('Frontal Lobe CPUs', 70) + '%';
-    document.getElementById('perf-gpu').style.width = score('Cortical GPUs', 65) + '%';
-    document.getElementById('perf-dream').style.width = score('Internet Chips', 75) + '%';
-    document.getElementById('perf-cool').style.width = score('Bio-Cooling', 60) + '%';
-  }
-
   loadSidebarParts();
+
+  window._refreshSandboxSidebar = () => { loadSidebarParts(); };
 
   const osSearch = document.getElementById('sandbox-os-search');
   if (osSearch) osSearch.oninput = () => {
@@ -740,20 +736,37 @@ function initSandbox() {
     } catch (e) { browserContent.textContent = 'Failed to load: ' + url; }
   }
 
-  window._sandboxSelectPart = async (category, partId, partName) => {
+  window._sandboxSelectPart = (category, partId, partName, partPrice, partSpecs) => {
     const row = document.querySelector('.spec-row[data-cat="' + category + '"]');
     if (!row) return;
     const sel = row.querySelector('.spec-select');
     if (!sel) return;
+    const partData = { id: partId, name: partName, category: category, price: partPrice || 0, specs: partSpecs || {} };
+    const val = JSON.stringify(partData);
+    let found = false;
     for (const opt of sel.options) {
       try {
         const v = JSON.parse(opt.value);
-        if (v.id == partId) { sel.value = opt.value; sel.dispatchEvent(new Event('change')); return; }
+        if (String(v.id) === String(partId)) { found = true; break; }
       } catch (e) {}
     }
+    if (!found) {
+      const o = document.createElement('option');
+      o.value = val;
+      o.textContent = partName + ' -- $' + (partPrice || 0).toFixed(2);
+      sel.appendChild(o);
+    }
+    sel.value = val;
+    sel.dispatchEvent(new Event('change'));
   };
 
-  window._sandboxInstallOS = async (osName) => {
+  window._sandboxBuyAndSelect = (category, partId, partName, partPrice, partSpecs) => {
+    addToInventory({ id: partId, name: partName, price: partPrice || 0, category: category, specs: partSpecs || {}, type: 'part', boughtAt: Date.now() });
+    window._sandboxSelectPart(category, partId, partName, partPrice, partSpecs);
+    if (window._refreshSandboxSidebar) window._refreshSandboxSidebar();
+  };
+
+  window._sandboxInstallOS = (osName) => {
     if (!state) {
       const opts = osSelect.querySelectorAll('option');
       for (const opt of opts) { if (opt.value === osName) { osSelect.value = osName; installBtn.click(); return; } }
