@@ -2,10 +2,10 @@
   "name": "cortex-commerce",
   "version": "1.0.0",
   "description": "BrainOS Hardware & OS Hub - Neural Commerce Platform",
-  "main": "server.js",
+  "main": "api/index.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node api/index.js",
+    "dev": "node api/index.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
