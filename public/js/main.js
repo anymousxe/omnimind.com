@@ -170,6 +170,17 @@ function initSandbox() {
   let state = null;
   const CACHE_KEY = 'cortex-sandbox-state';
 
+  const osSearch = document.getElementById('sandbox-os-search');
+  const osOptions = osSelect.querySelectorAll('option');
+  if (osSearch) {
+    osSearch.addEventListener('input', () => {
+      const q = osSearch.value.toLowerCase();
+      osOptions.forEach(opt => {
+        opt.style.display = opt.value.toLowerCase().includes(q) || opt.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+  }
+
   function loadCache() {
     try {
       const cached = localStorage.getItem(CACHE_KEY);
@@ -281,13 +292,42 @@ function initSandbox() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: cmd, state })
       });
-      const d = await r;
+      const d = await r.json();
 
       if (d.clear) { output.innerHTML = ''; }
-      else if (d.game) { startGame(d.game); }
+      if (d.output) {
+        d.output.split('\n').forEach(line => {
+          const stripped = line.replace(/\x1b\[[0-9;]*m/g, '');
+          const hasCyan = /\x1b\[1;36m|\x1b\[36m/.test(line);
+          const hasRed = /\x1b\[31m|\x1b\[1;31m/.test(line);
+          if (hasRed) writeOutput(stripped, 'output-line-err');
+          else if (hasCyan) writeOutput(stripped, 'output-line-info');
+          else writeOutput(stripped, 'output-line-out');
+        });
+      }
+      if (d.game) { startGame(d.game); }
       else if (d.installOS) {
-        setup.classList.remove('hidden');
-        terminal.classList.add('hidden');
+        writeOutput('\x1b[1;36m[install-os] Installing ' + d.installOS + '...\x1b[0m', 'output-line-info');
+        try {
+          const ir = await fetch('/api/sandbox/install-os', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ osName: d.installOS, state })
+          });
+          const id = await ir.json();
+          if (id.success) {
+            state = id.state;
+            saveCache();
+            updatePrompt();
+            osLabel.textContent = '🧠 ' + id.osName;
+            writeOutput('\x1b[1;32m[install-os] ✓ ' + id.osName + ' installed! Package manager: ' + id.shell + '\x1b[0m', 'output-line-info');
+            writeOutput('Type "help" for commands.\n', 'output-line-info');
+          } else {
+            writeOutput('\x1b[1;31m[install-os] OS not found. Type "install-os" to see available options.\x1b[0m', 'output-line-err');
+          }
+        } catch(e) {
+          writeOutput('\x1b[1;31m[install-os] Installation failed.\x1b[0m', 'output-line-err');
+        }
       }
       else if (d.reboot) {
         writeOutput('\n🔄 Rebooting neural cortex...', 'output-line-info');
@@ -296,20 +336,6 @@ function initSandbox() {
         writeOutput('🧠 Neural cortex rebooted.', 'output-line-info');
         writeOutput('Type "help" for commands.\n', 'output-line-info');
         if (state.env) state.env.bootTime = Date.now();
-      }
-      else if (d.output) {
-        d.output.split('\n').forEach(line => {
-          const stripped = line.replace(/\x1b\[[0-9;]*m/g, '');
-          const hasBold = /\x1b\[1;/.test(line);
-          const hasCyan = /\x1b\[1;36m|\x1b\[36m/.test(line);
-          const hasGreen = /\x1b\[32m|\x1b\[1;32m/.test(line);
-          const hasRed = /\x1b\[31m|\x1b\[1;31m/.test(line);
-          const hasYellow = /\x1b\[33m|\x1b\[1;33m/.test(line);
-          const hasPurple = /\x1b\[35m|\x1b\[1;35m/.test(line);
-          if (hasRed) writeOutput(stripped, 'output-line-err');
-          else if (hasCyan) writeOutput(stripped, 'output-line-info');
-          else writeOutput(stripped, 'output-line-out');
-        });
       }
       if (d.state) { state = d.state; saveCache(); updatePrompt(); }
     } catch(e) {

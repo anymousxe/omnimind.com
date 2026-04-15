@@ -1,11 +1,30 @@
 <h2 class="section-title">🧠 BrainOS Sandbox</h2>
 
 <div id="sandbox-setup" class="sandbox-setup glass-card">
-  <h3>Select Your Operating System</h3>
-  <p style="color:var(--text-dim);margin:0.5rem 0 1rem;font-size:0.9rem;">Choose an OS to install in your neural sandbox. Your selection is saved locally.</p>
-  <select id="sandbox-os-select">
+  <h3>⚡ Boot Your Neural OS</h3>
+  <p style="color:var(--text-dim);margin:0.5rem 0 1rem;font-size:0.9rem;">Choose an OS to install. Saved to your browser.</p>
+  <input type="text" id="sandbox-os-search" class="os-search" placeholder="Search operating systems...">
+  <select id="sandbox-os-select" size="10">
+    <option value="Ubuntu Neural" selected>Ubuntu Neural 24.04 — Free</option>
+    <option value="Arch Brain">Arch Brain rolling — Free</option>
+    <option value="Mint Cerebral">Mint Cerebral 22.1 — Free</option>
+    <option value="Fedora Synapse">Fedora Synapse 41 — Free</option>
+    <option value="Debian Thought">Debian Thought 13 — Free</option>
+    <option value="Manjaro Cortex">Manjaro Cortex 24 — Free</option>
+    <option value="Gentoo Neural">Gentoo Neural rolling — Free</option>
+    <option value="Alpine Brain">Alpine Brain 3.21 — Free</option>
+    <option value="Kali NeuroPen">Kali NeuroPen 2025.1 — Free</option>
+    <option value="Pop!_OS Dream">Pop!_OS Dream 24.04 — Free</option>
+    <option value="NixOS Thought">NixOS Thought 25.05 — Free</option>
+    <option value="Void Cortex">Void Cortex rolling — Free</option>
+    <option value="NeuralBSD">NeuralBSD 15.0 — Free</option>
+    <option value="FreeCortex">FreeCortex 14.2 — Free</option>
+    <option value="BrainOS Quantum Entangled">BrainOS Quantum Entangled — ₿ 499.99</option>
+    <option value="Omni Wind">Omni Wind 1.0 — ₿ 49.99</option>
     <% distros.forEach(d => { %>
-      <option value="<%= d.name %>"><%= d.name %> v<%= d.version %> — <%= d.price > 0 ? '₿ ' + d.price.toFixed(2) : 'Free' %></option>
+      <% if (!['Ubuntu Neural','Arch Brain','Mint Cerebral','Fedora Synapse','Debian Thought','Manjaro Cortex','Gentoo Neural','Alpine Brain','Kali NeuroPen','Pop!_OS Dream','NixOS Thought','Void Cortex','NeuralBSD','FreeCortex','BrainOS Quantum Entangled','Omni Wind'].includes(d.name)) { %>
+        <option value="<%= d.name %>"><%= d.name %> v<%= d.version %> — <%= d.price > 0 ? '₿ ' + d.price.toFixed(2) : 'Free' %></option>
+      <% } %>
     <% }) %>
   </select>
   <button id="sandbox-install-btn" class="btn btn-primary" style="margin-top:1rem;">⚡ Install OS</button>

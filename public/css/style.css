@@ -335,9 +335,17 @@ body {
 .sandbox-setup select {
   width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
   color: var(--text); padding: 0.6rem; border-radius: 6px; font-size: 0.9rem; font-family: var(--font);
-  margin-top: 0.5rem;
+  margin-top: 0.5rem; max-height: 200px; overflow-y: auto;
 }
+.sandbox-setup select option { padding: 0.4rem; background: #12121a; color: var(--text); }
+.sandbox-setup select option:hover { background: rgba(124,58,237,0.2); }
 .sandbox-setup select:focus { outline: none; border-color: var(--accent); }
+.sandbox-setup .os-search {
+  width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+  color: var(--text); padding: 0.6rem; border-radius: 6px; font-size: 0.9rem; font-family: var(--font);
+  margin-top: 0.5rem; margin-bottom: 0.3rem;
+}
+.sandbox-setup .os-search:focus { outline: none; border-color: var(--accent); }
 
 .sandbox-terminal { max-width: 900px; margin: 1rem auto; }
 .terminal-toolbar {
