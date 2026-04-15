@@ -300,7 +300,7 @@ function initSandbox() {
     try { localStorage.setItem(SPECS_KEY, JSON.stringify(rigSpecs)); } catch (e) {}
   }
   function loadCache() {
-    try { const c = localStorage.getItem(CK); if (c) { state = JSON.parse(c); return true; } } catch (e) {}
+    try { const c = localStorage.getItem(CK); if (c) { const parsed = JSON.parse(c); if (parsed && parsed.env) { state = parsed; return true; } } } catch (e) {}
     return false;
   }
   function saveCache() {
@@ -381,18 +381,20 @@ function initSandbox() {
 
   setOSLabel();
 
-  if (loadCache() && state.env && state.env.osName) {
+  if (loadCache() && state && state.env && state.env.osName) {
     setOSLabel();
     writeOut('Restored session: ' + state.env.osName, 'output-line-info');
     writeOut('Type "help" for commands.', 'output-line-info');
   } else {
-    writeOut('\xD83E\xDDE0 BrainOS Sandbox v3.7.1', 'output-line-info');
+    writeOut('BrainOS Sandbox v3.7.1', 'output-line-info');
     writeOut('No OS booted. Type "install-os <name>" to download one, then "boot <name>" to boot it.', 'output-line-info');
     writeOut('Type "help" for all commands.', 'output-line-info');
   }
 
   fullscreenBtn.onclick = () => terminal.classList.toggle('fullscreen');
   document.onkeydown = e => { if (e.key === 'Escape' && terminal.classList.contains('fullscreen')) terminal.classList.remove('fullscreen'); };
+  output.onclick = () => input.focus();
+  input.focus();
 
   input.onkeydown = async e => {
     if (e.key !== 'Enter') return;
