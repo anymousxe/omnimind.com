@@ -1,37 +1,37 @@
-<h2 class="section-title">🧠 BrainOS Sandbox</h2>
+<h2 class="section-title">&#x1F9E0; BrainOS Sandbox</h2>
 
 <div class="sandbox-layout">
   <div class="sandbox-sidebar glass-card">
-    <h3>⚡ My Neural Rig</h3>
-    <p class="sidebar-hint">Select your brain's hardware. These affect sandbox performance.</p>
+    <h3>&#x26A1; My Neural Rig</h3>
+    <p class="sidebar-hint">Parts you've bought show up here. Buy from <a href="/gallery" style="color:var(--cyan)">Hardware</a> or ask the AI.</p>
     <div id="sidebar-specs">
       <div class="spec-row" data-cat="Frontal Lobe CPUs">
         <label>CPU</label>
-        <select class="spec-select"><option value="">— None —</option></select>
+        <select class="spec-select"><option value="">-- None --</option></select>
       </div>
       <div class="spec-row" data-cat="Cortical GPUs">
         <label>GPU</label>
-        <select class="spec-select"><option value="">— None —</option></select>
+        <select class="spec-select"><option value="">-- None --</option></select>
       </div>
       <div class="spec-row" data-cat="Memory Caches">
         <label>RAM</label>
-        <select class="spec-select"><option value="">— None —</option></select>
+        <select class="spec-select"><option value="">-- None --</option></select>
       </div>
       <div class="spec-row" data-cat="Internet Chips">
         <label>Dream Chip</label>
-        <select class="spec-select"><option value="">— None —</option></select>
+        <select class="spec-select"><option value="">-- None --</option></select>
       </div>
       <div class="spec-row" data-cat="Bio-Cooling">
         <label>Cooling</label>
-        <select class="spec-select"><option value="">— None —</option></select>
+        <select class="spec-select"><option value="">-- None --</option></select>
       </div>
       <div class="spec-row" data-cat="Synaptic Accelerators">
         <label>Accelerator</label>
-        <select class="spec-select"><option value="">— None —</option></select>
+        <select class="spec-select"><option value="">-- None --</option></select>
       </div>
       <div class="spec-row" data-cat="Neuro-Link PSU">
         <label>PSU</label>
-        <select class="spec-select"><option value="">— None —</option></select>
+        <select class="spec-select"><option value="">-- None --</option></select>
       </div>
     </div>
     <div id="sidebar-performance" class="sidebar-perf">
@@ -43,34 +43,11 @@
   </div>
 
   <div class="sandbox-main">
-    <div id="sandbox-setup" class="sandbox-setup glass-card">
-      <h3>⚡ Boot Your Neural OS</h3>
-      <p style="color:var(--text-dim);margin:0.5rem 0 1rem;font-size:0.9rem;">Pick your OS. Saved to browser. Change anytime with <code style="color:var(--cyan)">install-os</code></p>
-      <input type="text" id="sandbox-os-search" class="os-search" placeholder="Search operating systems...">
-      <select id="sandbox-os-select" size="8">
-        <option value="Ubuntu Neural" selected>Ubuntu Neural 24.04 — Free</option>
-        <option value="Arch Brain">Arch Brain rolling — Free</option>
-        <option value="Mint Cerebral">Mint Cerebral 22.1 — Free</option>
-        <option value="Fedora Synapse">Fedora Synapse 41 — Free</option>
-        <option value="Debian Thought">Debian Thought 13 — Free</option>
-        <option value="Manjaro Cortex">Manjaro Cortex 24 — Free</option>
-        <option value="Gentoo Neural">Gentoo Neural rolling — Free</option>
-        <option value="Alpine Brain">Alpine Brain 3.21 — Free</option>
-        <option value="Kali NeuroPen">Kali NeuroPen 2025.1 — Free</option>
-        <option value="NixOS Thought">NixOS Thought 25.05 — Free</option>
-        <option value="Void Cortex">Void Cortex rolling — Free</option>
-        <option value="NeuralBSD">NeuralBSD 15.0 — Free</option>
-        <option value="BrainOS Quantum Entangled">BrainOS Quantum Entangled — $ 499.99</option>
-        <option value="Omni Wind">Omni Wind 1.0 — $ 49.99</option>
-      </select>
-      <button id="sandbox-install-btn" class="btn btn-primary" style="margin-top:1rem;">⚡ Boot OS</button>
-    </div>
-
-    <div id="sandbox-terminal" class="sandbox-terminal hidden">
+    <div id="sandbox-terminal" class="sandbox-terminal">
       <div class="terminal-toolbar glass-card">
         <div class="terminal-toolbar-left">
-          <span id="sandbox-os-label">🧠 Ubuntu Neural</span>
-          <button id="sandbox-fullscreen" class="btn btn-secondary btn-sm">⛶</button>
+          <span id="sandbox-os-label">&#x1F9E0; BrainOS</span>
+          <button id="sandbox-fullscreen" class="btn btn-secondary btn-sm">&#x26F6;</button>
         </div>
         <div class="terminal-toolbar-right">
           <span id="sandbox-cwd" style="color:var(--text-dim);font-family:var(--mono);font-size:0.75rem;">~</span>
@@ -78,7 +55,7 @@
       </div>
       <div id="sandbox-output" class="sandbox-output"></div>
       <div class="sandbox-input-row">
-        <span class="sandbox-prompt" id="sandbox-prompt">🧠 ~ $</span>
+        <span class="sandbox-prompt" id="sandbox-prompt">&#x1F9E0; $</span>
         <input id="sandbox-input" type="text" placeholder="Type 'help' for commands..." autocomplete="off" spellcheck="false">
       </div>
     </div>
@@ -90,8 +67,8 @@
     <div class="game-header">
       <span id="game-title">Game</span>
       <div class="game-header-btns">
-        <button id="game-iterate" class="btn btn-secondary btn-sm">🔄 Iterate</button>
-        <button id="game-quit" class="btn btn-secondary btn-sm">✕ Quit</button>
+        <button id="game-iterate" class="btn btn-secondary btn-sm">&#x1F504; Iterate</button>
+        <button id="game-quit" class="btn btn-secondary btn-sm">&#x2715; Quit</button>
       </div>
     </div>
     <canvas id="game-canvas" width="480" height="360"></canvas>
@@ -108,7 +85,7 @@
     <div class="browser-bar">
       <input id="browser-url" type="text" value="brain://home" placeholder="brain:// or https://">
       <button id="browser-go" class="btn btn-primary btn-sm">Go</button>
-      <button id="browser-close" class="btn btn-secondary btn-sm">✕</button>
+      <button id="browser-close" class="btn btn-secondary btn-sm">&#x2715;</button>
     </div>
     <div id="browser-content" class="browser-content"></div>
   </div>

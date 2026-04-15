@@ -277,26 +277,261 @@ function initOSInstaller() {
 }
 
 function initSandbox() {
-  const setup = document.getElementById('sandbox-setup');
   const terminal = document.getElementById('sandbox-terminal');
-  const osSelect = document.getElementById('sandbox-os-select');
-  const installBtn = document.getElementById('sandbox-install-btn');
   const osLabel = document.getElementById('sandbox-os-label');
   const fullscreenBtn = document.getElementById('sandbox-fullscreen');
   const output = document.getElementById('sandbox-output');
   const input = document.getElementById('sandbox-input');
   const cwdLabel = document.getElementById('sandbox-cwd');
   const promptLabel = document.getElementById('sandbox-prompt');
-  if (!setup) return;
+  if (!terminal) return;
 
   let state = null;
   const CK = 'cortex-sandbox-state';
   const SPECS_KEY = 'cortex-rig-specs';
+  const OS_INV_KEY = 'cortex-os-inventory';
   let rigSpecs = loadRigSpecs();
+  let booted = false;
 
   function loadRigSpecs() {
     try { const s = localStorage.getItem(SPECS_KEY); return s ? JSON.parse(s) : {}; } catch (e) { return {}; }
   }
+  function saveRigSpecs() {
+    try { localStorage.setItem(SPECS_KEY, JSON.stringify(rigSpecs)); } catch (e) {}
+  }
+  function loadCache() {
+    try { const c = localStorage.getItem(CK); if (c) { state = JSON.parse(c); return true; } } catch (e) {}
+    return false;
+  }
+  function saveCache() {
+    try { localStorage.setItem(CK, JSON.stringify(state)); } catch (e) {}
+  }
+  function getOSInventory() {
+    try { return JSON.parse(localStorage.getItem(OS_INV_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function addOSToInventory(name) {
+    const inv = getOSInventory();
+    if (!inv.find(o => o.name === name)) { inv.push({ name, downloadedAt: Date.now() }); localStorage.setItem(OS_INV_KEY, JSON.stringify(inv)); }
+  }
+
+  function updatePrompt() {
+    if (!state) { cwdLabel.textContent = ''; promptLabel.textContent = '\uD83E\uDDE0 $'; return; }
+    const s = state.cwd.replace('/home/neural-user', '~') || '/';
+    cwdLabel.textContent = s;
+    promptLabel.textContent = '\uD83E\uDDE0 ' + s + ' $';
+  }
+  function writeOut(t, c) {
+    const d = document.createElement('div');
+    d.className = c || 'output-line-out';
+    d.textContent = t;
+    output.appendChild(d);
+    output.scrollTop = output.scrollHeight;
+  }
+  function setOSLabel() {
+    if (state && state.env && state.env.osName) {
+      osLabel.textContent = '\uD83E\uDDE0 ' + state.env.osName;
+      booted = true;
+    } else {
+      osLabel.textContent = '\uD83E\uDDE0 BrainOS';
+      booted = false;
+    }
+    updatePrompt();
+  }
+
+  function loadSidebarParts() {
+    const cats = ['Frontal Lobe CPUs', 'Cortical GPUs', 'Memory Caches', 'Internet Chips', 'Bio-Cooling', 'Synaptic Accelerators', 'Neuro-Link PSU'];
+    const inv = getInventory();
+    for (const cat of cats) {
+      const row = document.querySelector('.spec-row[data-cat="' + cat + '"]');
+      if (!row) continue;
+      const sel = row.querySelector('.spec-select');
+      sel.innerHTML = '<option value="">-- None --</option>';
+      const catParts = inv.filter(i => i.category === cat && i.type === 'part');
+      catParts.forEach(p => {
+        const o = document.createElement('option');
+        o.value = JSON.stringify({ id: p.id, name: p.name, category: p.category, price: p.price, specs: p.specs || {} });
+        o.textContent = p.name + ' -- $' + (p.price || 0).toFixed(2);
+        sel.appendChild(o);
+      });
+      if (rigSpecs[cat]) {
+        const match = catParts.find(p => p.id === rigSpecs[cat].id);
+        if (match) sel.value = JSON.stringify({ id: match.id, name: match.name, category: match.category, price: match.price, specs: match.specs || {} });
+      }
+      sel.onchange = () => {
+        const v = sel.value;
+        if (v) { rigSpecs[cat] = JSON.parse(v); } else { delete rigSpecs[cat]; }
+        saveRigSpecs();
+        updatePerfBars();
+        if (state && state.env) state.env.parts = Object.values(rigSpecs);
+      };
+    }
+    updatePerfBars();
+  }
+
+  function updatePerfBars() {
+    const score = (cat, base) => rigSpecs[cat] ? base + Math.floor(Math.random() * (100 - base)) : 5;
+    document.getElementById('perf-cpu').style.width = score('Frontal Lobe CPUs', 70) + '%';
+    document.getElementById('perf-gpu').style.width = score('Cortical GPUs', 65) + '%';
+    document.getElementById('perf-dream').style.width = score('Internet Chips', 75) + '%';
+    document.getElementById('perf-cool').style.width = score('Bio-Cooling', 60) + '%';
+  }
+
+  loadSidebarParts();
+  window._refreshSandboxSidebar = () => { loadSidebarParts(); };
+
+  setOSLabel();
+
+  if (loadCache() && state.env && state.env.osName) {
+    setOSLabel();
+    writeOut('Restored session: ' + state.env.osName, 'output-line-info');
+    writeOut('Type "help" for commands.', 'output-line-info');
+  } else {
+    writeOut('\xD83E\xDDE0 BrainOS Sandbox v3.7.1', 'output-line-info');
+    writeOut('No OS booted. Type "install-os <name>" to download one, then "boot <name>" to boot it.', 'output-line-info');
+    writeOut('Type "help" for all commands.', 'output-line-info');
+  }
+
+  fullscreenBtn.onclick = () => terminal.classList.toggle('fullscreen');
+  document.onkeydown = e => { if (e.key === 'Escape' && terminal.classList.contains('fullscreen')) terminal.classList.remove('fullscreen'); };
+
+  input.onkeydown = async e => {
+    if (e.key !== 'Enter') return;
+    const cmd = input.value.trim();
+    if (!cmd) return;
+    input.value = '';
+    writeOut(promptLabel.textContent + ' ' + cmd, 'output-line-cmd');
+
+    const parts = cmd.split(/\s+/);
+    const mainCmd = parts[0].toLowerCase();
+    const args = parts.slice(1);
+
+    if (mainCmd === 'install-os') {
+      const osName = args.join(' ');
+      if (!osName) { writeOut('Usage: install-os <OS name>', 'output-line-err'); writeOut('Available: Ubuntu Neural, Arch Brain, Mint Cerebral, Fedora Synapse, Debian Thought, Gentoo Neural, Alpine Brain, Kali NeuroPen, NixOS Thought, Void Cortex, NeuralBSD', 'output-line-info'); return; }
+      writeOut('Downloading ' + osName + '...', 'output-line-info');
+      try {
+        const r = await fetch('/api/sandbox/install-os', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ osName, state: { env: { parts: Object.values(rigSpecs) } } }) });
+        const d = await r.json();
+        if (d.success) {
+          addOSToInventory(d.osName);
+          writeOut(d.osName + ' downloaded! Package manager: ' + d.shell, 'output-line-info');
+          writeOut('Type "boot ' + d.osName + '" to boot it.', 'output-line-info');
+          const osInv = getOSInventory();
+          if (osInv.length === 1) {
+            writeOut('Auto-booting only OS...', 'output-line-info');
+            doBoot(d.osName);
+          }
+        } else {
+          writeOut('OS not found. Check the name.', 'output-line-err');
+        }
+      } catch (e) { writeOut('Download failed.', 'output-line-err'); }
+      return;
+    }
+
+    if (mainCmd === 'boot') {
+      const osName = args.join(' ');
+      if (!osName) {
+        const osInv = getOSInventory();
+        if (!osInv.length) { writeOut('No OS downloaded. Type "install-os <name>" first.', 'output-line-err'); }
+        else if (osInv.length === 1) { doBoot(osInv[0].name); }
+        else { writeOut('Downloaded OSes:', 'output-line-info'); osInv.forEach(o => writeOut('  ' + o.name, 'output-line-info')); writeOut('Usage: boot <OS name>', 'output-line-info'); }
+        return;
+      }
+      const osInv = getOSInventory();
+      if (!osInv.find(o => o.name === osName)) { writeOut('You haven\'t downloaded ' + osName + '. Type "install-os ' + osName + '" first.', 'output-line-err'); return; }
+      doBoot(osName);
+      return;
+    }
+
+    if (mainCmd === 'my-os') {
+      const osInv = getOSInventory();
+      if (!osInv.length) { writeOut('No OS downloaded. Type "install-os <name>".', 'output-line-info'); }
+      else { writeOut('Downloaded OSes:', 'output-line-info'); osInv.forEach(o => writeOut('  ' + o.name + (state?.env?.osName === o.name ? ' (running)' : ''), 'output-line-info')); }
+      return;
+    }
+
+    if (!booted && mainCmd !== 'help' && mainCmd !== 'install-os' && mainCmd !== 'my-os' && mainCmd !== 'boot' && mainCmd !== 'clear') {
+      writeOut('No OS booted. Type "install-os <name>" then "boot <name>" first.', 'output-line-err');
+      return;
+    }
+
+    try {
+      const r = await fetch('/api/sandbox/exec', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, state }) });
+      const d = await r.json();
+      if (d.output) d.output.split('\n').forEach(l => {
+        const s = l.replace(/\x1b\[[0-9;]*m/g, '');
+        if (/\x1b\[31m|\x1b\[1;31m/.test(l)) writeOut(s, 'output-line-err');
+        else if (/\x1b\[36m|\x1b\[1;36m/.test(l)) writeOut(s, 'output-line-info');
+        else writeOut(s);
+      });
+      if (d.clear) output.innerHTML = '';
+      if (d.game) startGame(d.game);
+      else if (d.reboot) {
+        writeOut('Rebooting...', 'output-line-info');
+        await new Promise(r => setTimeout(r, 2000));
+        output.innerHTML = '';
+        writeOut('Rebooted.', 'output-line-info');
+      }
+      else if (d.browser) openBrowser(d.browser);
+      else if (d.ai) {
+        const agentName = localStorage.getItem('cortex-agent-name') || state?.env?.agentName || 'Nyx';
+        writeOut(agentName + ' is thinking...', 'output-line-info');
+        try {
+          const ar = await fetch('/api/brain-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: d.ai, history: [], name: agentName }) });
+          const rd = ar.body.getReader(); const dc = new TextDecoder(); let buf = '', reply = '';
+          while (true) { const { done, value } = await rd.read(); if (done) break; buf += dc.decode(value, { stream: true }); const ls = buf.split('\n'); buf = ls.pop() || '';
+            for (const l of ls) { if (!l.startsWith('data: ')) continue; try { const j = JSON.parse(l.slice(6)); if (j.type === 'text') reply += j.data; } catch (e) {} } }
+          writeOut('');
+          reply.split('\n').forEach(l => writeOut(l.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/`([^`]+)`/g, '$1'), 'output-line-info'));
+        } catch (e) { writeOut('Agent offline.', 'output-line-err'); }
+      }
+      else if (d.cortex) {
+        writeOut('Cortex-Assistant thinking...', 'output-line-info');
+        try {
+          const ar = await fetch('/api/sandbox/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: d.cortex, osName: state?.env?.osName || 'BrainOS', specs: Object.values(rigSpecs) }) });
+          const ad = await ar.json();
+          writeOut('');
+          ad.reply.split('\n').forEach(l => writeOut(l.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/`([^`]+)`/g, '$1'), 'output-line-info'));
+        } catch (e) { writeOut('Cortex offline.', 'output-line-err'); }
+      }
+      if (d.state) { state = d.state; state.env.parts = Object.values(rigSpecs); saveCache(); updatePrompt(); }
+    } catch (e) { writeOut('Error: disrupted.', 'output-line-err'); }
+  };
+
+  async function doBoot(osName) {
+    writeOut('Booting ' + osName + '...', 'output-line-info');
+    try {
+      const r = await fetch('/api/sandbox/install-os', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ osName, state: { env: { parts: Object.values(rigSpecs) } } }) });
+      const d = await r.json();
+      if (d.success) {
+        state = d.state;
+        state.env.parts = Object.values(rigSpecs);
+        saveCache();
+        setOSLabel();
+        writeOut(d.osName + ' booted! Package manager: ' + d.shell, 'output-line-info');
+        writeOut('Type "help" for commands.', 'output-line-info');
+      } else { writeOut('Boot failed.', 'output-line-err'); }
+    } catch (e) { writeOut('Boot failed.', 'output-line-err'); }
+  }
+
+  window._sandboxSelectPart = (category, partId, partName, partPrice, partSpecs) => {
+    const row = document.querySelector('.spec-row[data-cat="' + category + '"]');
+    if (!row) return;
+    const sel = row.querySelector('.spec-select');
+    if (!sel) return;
+    const partData = { id: partId, name: partName, category: category, price: partPrice || 0, specs: partSpecs || {} };
+    const val = JSON.stringify(partData);
+    let found = false;
+    for (const opt of sel.options) { try { const v = JSON.parse(opt.value); if (String(v.id) === String(partId)) { found = true; break; } } catch (e) {} }
+    if (!found) { const o = document.createElement('option'); o.value = val; o.textContent = partName + ' -- $' + (partPrice || 0).toFixed(2); sel.appendChild(o); }
+    sel.value = val;
+    sel.dispatchEvent(new Event('change'));
+  };
+
+  window._sandboxInstallOS = (osName) => {
+    addOSToInventory(osName);
+    doBoot(osName);
+  };
   function saveRigSpecs() {
     try { localStorage.setItem(SPECS_KEY, JSON.stringify(rigSpecs)); } catch (e) {}
   }
