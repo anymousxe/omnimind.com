@@ -1,14 +1,39 @@
-<h2 class="section-title">🧠 My Brain</h2>
-<p style="color:var(--text-dim);margin-bottom:1rem;text-align:center;">Your neural inventory. Sell back parts you don't want for 80% refund.</p>
+<h2 class="section-title">&#x1F9E0; My Brain</h2>
+<p style="color:var(--text-dim);margin-bottom:1rem;text-align:center;">Your neural inventory. Remove parts you don't want.</p>
 
-<div class="brain-stats glass-card" style="max-width:600px;margin:0 auto 1.5rem;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;">
-  <div><span style="color:var(--text-dim);font-size:0.8rem;">Balance</span><div id="brain-balance" style="font-size:1.3rem;font-weight:700;color:var(--accent2);font-family:var(--mono);">$ 10000.00</div></div>
+<div class="brain-stats glass-card" style="max-width:600px;margin:0 auto 1.5rem;padding:1rem 1.5rem;display:flex;justify-content:center;align-items:center;">
   <div><span style="color:var(--text-dim);font-size:0.8rem;">Inventory Value</span><div id="brain-total" style="font-size:1.3rem;font-weight:700;color:var(--cyan);font-family:var(--mono);">$ 0.00</div></div>
 </div>
 
 <div id="my-brain-empty" class="glass-card" style="max-width:600px;margin:0 auto;padding:3rem 1.5rem;text-align:center;">
-  <p style="font-size:1.2rem;color:var(--text-dim);">🧠 Your brain is empty.</p>
+  <p style="font-size:1.2rem;color:var(--text-dim);">&#x1F9E0; Your brain is empty.</p>
   <p style="color:var(--text-dim);font-size:0.9rem;margin-top:0.5rem;">Browse <a href="/gallery" style="color:var(--accent)">Hardware</a> or <a href="/prebuilts" style="color:var(--accent)">Prebuilts</a> and hit "Sync to Brain" to stock up.</p>
 </div>
 
 <div id="my-brain-grid" class="parts-grid" style="max-width:900px;margin:0 auto;"></div>
+
+<div class="brain-agent-section" style="max-width:700px;margin:3rem auto 0;">
+  <h2 class="section-title">&#x1F4AC; Brain Agent</h2>
+  <p style="color:var(--text-dim);margin-bottom:1rem;text-align:center;font-size:0.85rem;">An AI running inside your brain. It thinks it lives there. No store context. Just vibes.</p>
+
+  <div class="agent-name-row glass-card" style="padding:0.8rem 1.2rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.8rem;">
+    <label style="font-size:0.8rem;color:var(--accent2);font-weight:600;white-space:nowrap;">Agent Name</label>
+    <input id="agent-name" type="text" placeholder="e.g. Nyx, Cortex, Pixel" value="Nyx" class="agent-name-input">
+    <button id="agent-rename" class="btn btn-sm btn-secondary">Set</button>
+  </div>
+
+  <div id="agent-chat" class="glass-card" style="padding:0;">
+    <div class="agent-chat-header">
+      <span id="agent-header-name">&#x1F4AC; Nyx</span>
+      <button id="agent-clear" class="btn btn-sm btn-secondary" style="padding:0.2rem 0.5rem;font-size:0.7rem;">Clear</button>
+    </div>
+    <div id="agent-messages" class="chat-messages" style="min-height:200px;max-height:400px;">
+      <div class="chat-msg system" id="agent-welcome">Hi! I'm Nyx. I live in your brain. What's up?</div>
+    </div>
+    <div class="chat-input-area">
+      <input id="agent-input" type="text" placeholder="Talk to your brain agent..." autocomplete="off">
+      <button id="agent-send">&#x2192;</button>
+      <button id="agent-stop" class="chat-stop-btn hidden">&#x25A0;</button>
+    </div>
+  </div>
+</div>

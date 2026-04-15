@@ -31,6 +31,7 @@ function initChat() {
   if (!bubble) return;
 
   let history = [];
+  let chatAbort = null;
   bubble.onclick = () => { panel.classList.remove('hidden'); bubble.style.display = 'none'; };
   close.onclick = () => { panel.classList.add('hidden'); bubble.style.display = 'flex'; };
 
@@ -58,14 +59,20 @@ function initChat() {
     input.disabled = true;
     send.disabled = true;
 
+    const stopBtn = document.getElementById('chat-stop');
+    stopBtn.classList.remove('hidden');
+
     const el = addMsg('', 'assistant streaming');
     el._raw = '';
+
+    chatAbort = new AbortController();
 
     try {
       const r = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: t, history })
+        body: JSON.stringify({ message: t, history }),
+        signal: chatAbort.signal
       });
       const rd = r.body.getReader();
       const dc = new TextDecoder();
@@ -89,9 +96,20 @@ function initChat() {
               let actionLabel = j.data.action;
               if (j.data.action === 'add_part') actionLabel = 'Manufactured Neural-Module';
               else if (j.data.action === 'remove_part') actionLabel = 'Decommissioned part';
+              else if (j.data.action === 'select_part_for_user') actionLabel = 'Selected part for your sandbox';
+              else if (j.data.action === 'install_os_for_user') actionLabel = 'Installing OS in your sandbox';
               a.innerHTML = '<span class="action-icon">&#9889;</span> ' + actionLabel;
               messages.appendChild(a);
               messages.scrollTop = messages.scrollHeight;
+            }
+            else if (j.type === 'sandbox_action') {
+              const a = document.createElement('div');
+              a.className = 'chat-msg action-msg';
+              a.innerHTML = '<span class="action-icon">&#9889;</span> ' + (j.data.label || j.data.action);
+              messages.appendChild(a);
+              messages.scrollTop = messages.scrollHeight;
+              if (j.data.action === 'select_part' && window._sandboxSelectPart) window._sandboxSelectPart(j.data.category, j.data.partId, j.data.partName);
+              if (j.data.action === 'install_os' && window._sandboxInstallOS) window._sandboxInstallOS(j.data.osName);
             }
             else if (j.type === 'done') el.classList.remove('streaming');
           } catch (e) {}
@@ -101,16 +119,21 @@ function initChat() {
       history.push({ role: 'assistant', content: el._raw });
     } catch (e) {
       el.classList.remove('streaming');
-      appendTo(el, '\n\nNeural pathway disrupted.');
+      if (e.name !== 'AbortError') appendTo(el, '\n\nNeural pathway disrupted.');
+      else appendTo(el, ' [stopped]');
     }
 
+    chatAbort = null;
     input.disabled = false;
     send.disabled = false;
+    stopBtn.classList.add('hidden');
     input.focus();
   }
 
   send.onclick = sendMsg;
   input.onkeydown = e => { if (e.key === 'Enter') sendMsg(); };
+  const chatStopBtn = document.getElementById('chat-stop');
+  if (chatStopBtn) chatStopBtn.onclick = () => { if (chatAbort) chatAbort.abort(); };
 }
 
 const INVENTORY_KEY = 'cortex-my-brain';
@@ -126,7 +149,7 @@ function addToInventory(item) {
   }
 }
 function removeFromInventory(id, type) {
-  const inv = getInventory().filter(i => !(i.id === id && i.type === type));
+  const inv = getInventory().filter(i => !(String(i.id) === String(id) && i.type === type));
   saveInventory(inv);
   return inv;
 }
@@ -716,22 +739,36 @@ function initSandbox() {
       browserContent.innerHTML = '<div style="color:var(--accent2);font-weight:bold;margin-bottom:0.5rem">' + d.title + '</div><pre style="white-space:pre-wrap;color:var(--green)">' + d.content + '</pre>';
     } catch (e) { browserContent.textContent = 'Failed to load: ' + url; }
   }
+
+  window._sandboxSelectPart = async (category, partId, partName) => {
+    const row = document.querySelector('.spec-row[data-cat="' + category + '"]');
+    if (!row) return;
+    const sel = row.querySelector('.spec-select');
+    if (!sel) return;
+    for (const opt of sel.options) {
+      try {
+        const v = JSON.parse(opt.value);
+        if (v.id == partId) { sel.value = opt.value; sel.dispatchEvent(new Event('change')); return; }
+      } catch (e) {}
+    }
+  };
+
+  window._sandboxInstallOS = async (osName) => {
+    if (!state) {
+      const opts = osSelect.querySelectorAll('option');
+      for (const opt of opts) { if (opt.value === osName) { osSelect.value = osName; installBtn.click(); return; } }
+    }
+  };
 }
 
 function initMyBrain() {
   const grid = document.getElementById('my-brain-grid');
   const empty = document.getElementById('my-brain-empty');
-  const balanceEl = document.getElementById('brain-balance');
   const totalEl = document.getElementById('brain-total');
   if (!grid) return;
 
-  let balance = parseFloat(localStorage.getItem('cortex-balance') || '10000');
-
-  function saveBalance() { localStorage.setItem('cortex-balance', balance.toFixed(2)); }
-
   function render() {
     const inv = getInventory();
-    if (balanceEl) balanceEl.textContent = '$' + balance.toFixed(2);
     if (totalEl) totalEl.textContent = '$' + inv.reduce((s, i) => s + (i.price || 0), 0).toFixed(2);
 
     if (!inv.length) {
@@ -741,29 +778,25 @@ function initMyBrain() {
     }
     if (empty) empty.classList.add('hidden');
 
-    grid.innerHTML = inv.map(item => {
-      const refund = Math.round(item.price * 0.8 * 100) / 100;
+    grid.innerHTML = inv.map((item, idx) => {
       const isPb = item.type === 'prebuilt';
-      return '<div class="brain-item glass-card" data-id="' + item.id + '" data-type="' + item.type + '" data-price="' + item.price + '">' +
+      return '<div class="brain-item glass-card" data-idx="' + idx + '" data-id="' + item.id + '" data-type="' + item.type + '">' +
         '<div class="bi-header"><h3>' + item.name + '</h3><span class="bi-type">' + (isPb ? 'Prebuilt' : 'Part') + '</span></div>' +
         (item.category ? '<span class="bi-cat">' + item.category + '</span>' : '') +
         '<div class="bi-price">$' + item.price.toFixed(2) + '</div>' +
-        '<div class="bi-refund">Sell back for $' + refund.toFixed(2) + ' <span class="bi-refund-note">(80% refund)</span></div>' +
-        '<button class="btn btn-danger btn-sm brain-sell-btn" data-id="' + item.id + '" data-type="' + item.type + '" data-refund="' + refund + '">Sell Back</button>' +
+        '<button class="btn btn-danger btn-sm brain-sell-btn" data-idx="' + idx + '">Remove from Brain</button>' +
         '</div>';
     }).join('');
 
     grid.querySelectorAll('.brain-sell-btn').forEach(btn => {
       btn.onclick = () => {
-        const id = btn.dataset.id;
-        const type = btn.dataset.type;
-        const refund = parseFloat(btn.dataset.refund);
+        const idx = parseInt(btn.dataset.idx);
+        const inv = getInventory();
+        if (idx >= 0 && idx < inv.length) {
+          inv.splice(idx, 1);
+          saveInventory(inv);
+        }
         const card = btn.closest('.brain-item');
-        btn.disabled = true;
-        btn.textContent = 'Selling...';
-        removeFromInventory(id, type);
-        balance += refund;
-        saveBalance();
         card.style.transition = 'opacity 0.3s, transform 0.3s';
         card.style.opacity = '0';
         card.style.transform = 'scale(0.9)';
@@ -772,4 +805,114 @@ function initMyBrain() {
     });
   }
   render();
+
+  const agentNameInput = document.getElementById('agent-name');
+  const agentRenameBtn = document.getElementById('agent-rename');
+  const agentHeaderName = document.getElementById('agent-header-name');
+  const agentMessages = document.getElementById('agent-messages');
+  const agentInput = document.getElementById('agent-input');
+  const agentSend = document.getElementById('agent-send');
+  const agentStop = document.getElementById('agent-stop');
+  const agentClear = document.getElementById('agent-clear');
+  const agentWelcome = document.getElementById('agent-welcome');
+
+  if (!agentNameInput) return;
+
+  let agentName = localStorage.getItem('cortex-agent-name') || 'Nyx';
+  let agentHistory = [];
+  let agentAbort = null;
+
+  agentNameInput.value = agentName;
+  updateAgentName();
+
+  function updateAgentName() {
+    agentHeaderName.textContent = '\uD83D\uDCAC ' + agentName;
+    agentWelcome.textContent = "Hi! I'm " + agentName + ". I live in your brain. What's up?";
+  }
+
+  agentRenameBtn.onclick = () => {
+    const n = agentNameInput.value.trim();
+    if (n) { agentName = n; localStorage.setItem('cortex-agent-name', agentName); updateAgentName(); }
+  };
+
+  agentClear.onclick = () => {
+    agentHistory = [];
+    agentMessages.innerHTML = '';
+    agentMessages.appendChild(agentWelcome);
+  };
+
+  function addAgentMsg(h, c) {
+    const d = document.createElement('div');
+    d.className = 'chat-msg ' + c;
+    d.innerHTML = h;
+    agentMessages.appendChild(d);
+    agentMessages.scrollTop = agentMessages.scrollHeight;
+    return d;
+  }
+
+  function appendAgentTo(el, t) {
+    el._raw += t;
+    el.innerHTML = renderMarkdown(el._raw);
+    agentMessages.scrollTop = agentMessages.scrollHeight;
+  }
+
+  async function sendAgentMsg() {
+    const t = agentInput.value.trim();
+    if (!t) return;
+    addAgentMsg(t, 'user');
+    agentHistory.push({ role: 'user', content: t });
+    agentInput.value = '';
+    agentInput.disabled = true;
+    agentSend.disabled = true;
+    agentStop.classList.remove('hidden');
+
+    const el = addAgentMsg('', 'assistant streaming');
+    el._raw = '';
+
+    agentAbort = new AbortController();
+
+    try {
+      const r = await fetch('/api/brain-agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: t, history: agentHistory, name: agentName }),
+        signal: agentAbort.signal
+      });
+      const rd = r.body.getReader();
+      const dc = new TextDecoder();
+      let buf = '';
+
+      while (true) {
+        const { done, value } = await rd.read();
+        if (done) break;
+        buf += dc.decode(value, { stream: true });
+        const ls = buf.split('\n');
+        buf = ls.pop() || '';
+        for (const l of ls) {
+          if (!l.startsWith('data: ')) continue;
+          try {
+            const j = JSON.parse(l.slice(6));
+            if (j.type === 'text') appendAgentTo(el, j.data);
+            else if (j.type === 'done') el.classList.remove('streaming');
+          } catch (e) {}
+        }
+      }
+      el.classList.remove('streaming');
+      agentHistory.push({ role: 'assistant', content: el._raw });
+    } catch (e) {
+      el.classList.remove('streaming');
+      if (e.name !== 'AbortError') appendAgentTo(el, '\n\nConnection lost.');
+      else appendAgentTo(el, ' [stopped]');
+    }
+
+    agentAbort = null;
+    agentInput.disabled = false;
+    agentSend.disabled = false;
+    agentStop.classList.add('hidden');
+    agentInput.focus();
+  }
+
+  agentSend.onclick = sendAgentMsg;
+  agentInput.onkeydown = e => { if (e.key === 'Enter') sendAgentMsg(); };
+  agentStop.onclick = () => { if (agentAbort) agentAbort.abort(); };
 }

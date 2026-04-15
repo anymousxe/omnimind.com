@@ -461,6 +461,24 @@ body {
 .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; box-shadow: 0 0 15px rgba(239,68,68,0.3); margin-top: 0.3rem; }
 .btn-danger:hover { box-shadow: 0 0 25px rgba(239,68,68,0.5); transform: translateY(-1px); }
 
+.chat-stop-btn {
+  background: var(--red); color: white; border: none; border-radius: 6px;
+  padding: 0.5rem 0.8rem; cursor: pointer; font-size: 1rem; line-height: 1;
+}
+.chat-stop-btn.hidden { display: none; }
+
+.agent-name-input {
+  flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+  color: var(--text); padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-family: var(--font);
+}
+.agent-name-input:focus { outline: none; border-color: var(--accent); }
+
+.agent-chat-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.6rem 1rem; border-bottom: 1px solid var(--glass-border);
+  font-weight: 600; font-size: 0.85rem; color: var(--accent2);
+}
+
 .sell-input:focus { outline: none; border-color: var(--accent); }
 textarea.sell-input { resize: vertical; }
 .sell-result { margin-top: 1rem; padding: 0.8rem; border-radius: 8px; font-size: 0.9rem; }
