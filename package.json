@@ -1,0 +1,19 @@
+{
+  "name": "cortex-commerce",
+  "version": "1.0.0",
+  "description": "BrainOS Hardware & OS Hub - Neural Commerce Platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-ejs-layouts": "^2.5.1",
+    "node-fetch": "^2.7.0"
+  }
+}

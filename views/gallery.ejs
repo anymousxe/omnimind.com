@@ -1,0 +1,46 @@
+<h2 class="section-title">BrainOS Hardware Catalog</h2>
+
+<div class="gallery-controls glass-card">
+  <form method="GET" action="/gallery" class="filter-form">
+    <select name="category">
+      <option value="all" <%= selectedCategory==='all'?'selected':'' %>>All Categories</option>
+      <% categories.forEach(cat => { %>
+        <option value="<%= cat %>" <%= selectedCategory===cat?'selected':'' %>><%= cat %></option>
+      <% }) %>
+    </select>
+    <input type="text" name="search" placeholder="Search neural parts..." value="<%= search %>">
+    <select name="sort">
+      <option value="">Sort by</option>
+      <option value="price_asc" <%= sort==='price_asc'?'selected':'' %>>Price: Low → High</option>
+      <option value="price_desc" <%= sort==='price_desc'?'selected':'' %>>Price: High → Low</option>
+      <option value="name" <%= sort==='name'?'selected':'' %>>Name A-Z</option>
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+  </form>
+  <div class="results-count"><%= total %> neural modules found</div>
+</div>
+
+<div class="parts-grid">
+  <% parts.forEach(p => { %>
+    <a href="/part/<%= p.id %>" class="part-card glass-card">
+      <div class="part-cat-badge"><%= p.category %></div>
+      <h3 class="part-name"><%= p.name %></h3>
+      <div class="part-price">₿ <%= p.price.toFixed(2) %></div>
+      <div class="part-stock <% if(p.stock <= 0) { %>out<% } else if(p.stock < 10) { %>low<% } %>">
+        <% if(p.stock <= 0) { %>Out of Stock<% } else if(p.stock < 10) { %><%= p.stock %> left<% } else { %>In Stock<% } %>
+      </div>
+    </a>
+  <% }) %>
+</div>
+
+<% if (totalPages > 1) { %>
+<div class="pagination">
+  <% if (page > 1) { %>
+    <a href="?page=<%= page-1 %>&category=<%= selectedCategory %>&search=<%= search %>&sort=<%= sort %>" class="btn btn-secondary btn-sm">← Prev</a>
+  <% } %>
+  <span class="page-info">Page <%= page %> / <%= totalPages %></span>
+  <% if (page < totalPages) { %>
+    <a href="?page=<%= page+1 %>&category=<%= selectedCategory %>&search=<%= search %>&sort=<%= sort %>" class="btn btn-secondary btn-sm">Next →</a>
+  <% } %>
+</div>
+<% } %>

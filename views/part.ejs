@@ -1,0 +1,43 @@
+<div class="part-detail glass-card">
+  <div class="pd-header">
+    <a href="/gallery" class="back-link">← Back to Gallery</a>
+    <span class="part-cat-badge"><%= part.category %></span>
+  </div>
+  <h1 class="pd-name"><%= part.name %></h1>
+  <div class="pd-price">₿ <%= part.price.toFixed(2) %></div>
+  <div class="pd-stock <% if(part.stock <= 0) { %>out<% } %>">
+    <% if(part.stock <= 0) { %>⚠️ Out of Stock<% } else { %>✅ <%= part.stock %> in stock<% } %>
+  </div>
+
+  <div class="pd-specs">
+    <h3>Neural Specifications</h3>
+    <table class="specs-table">
+      <% const specs = typeof part.specs === 'string' ? JSON.parse(part.specs) : part.specs; %>
+      <% Object.entries(specs).forEach(([k,v]) => { %>
+        <tr><td class="spec-key"><%= k %></td><td class="spec-val"><%= v %></td></tr>
+      <% }) %>
+    </table>
+  </div>
+
+  <button class="btn btn-primary btn-lg sync-brain-btn" data-id="<%= part.id %>" data-name="<%= part.name %>" <% if(part.stock <= 0) { %>disabled<% } %>>
+    ⚡ Sync to Brain
+  </button>
+
+  <div id="sync-progress" class="sync-progress hidden">
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div id="sync-status" class="sync-status">Initiating neural handshake...</div>
+  </div>
+</div>
+
+<section class="compat-section">
+  <h3 class="section-title">Compatible Neural Modules</h3>
+  <div class="parts-grid">
+    <% compat.forEach(p => { %>
+      <a href="/part/<%= p.id %>" class="part-card glass-card">
+        <div class="part-cat-badge"><%= p.category %></div>
+        <h3 class="part-name"><%= p.name %></h3>
+        <div class="part-price">₿ <%= p.price.toFixed(2) %></div>
+      </a>
+    <% }) %>
+  </div>
+</section>

@@ -1,0 +1,44 @@
+<section class="hero">
+  <div class="hero-glass">
+    <h1>🧠 Cortex-Commerce</h1>
+    <p class="hero-sub">The Neural Hardware Authority — BrainOS Parts & Operating Systems</p>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-num"><%= totalParts %></span><span class="stat-label">Neural Parts</span></div>
+      <div class="stat"><span class="stat-num"><%= totalOS %></span><span class="stat-label">OS Distributions</span></div>
+      <div class="stat"><span class="stat-num">6</span><span class="stat-label">Categories</span></div>
+    </div>
+    <div class="hero-actions">
+      <a href="/gallery" class="btn btn-primary">Browse Hardware</a>
+      <a href="/os" class="btn btn-secondary">Install BrainOS</a>
+    </div>
+  </div>
+</section>
+
+<section class="categories-section">
+  <h2 class="section-title">Neural Subsystems</h2>
+  <div class="cat-grid">
+    <% const icons = {'Synaptic Accelerators':'⚡','Bio-Cooling':'❄️','Cortical GPUs':'🖥️','Frontal Lobe CPUs':'🧮','Memory Caches':'💾','Neuro-Link PSU':'🔌'}; %>
+    <% categories.forEach(cat => { %>
+      <a href="/gallery?category=<%= encodeURIComponent(cat) %>" class="cat-card glass-card">
+        <div class="cat-icon"><%= icons[cat] || '🧠' %></div>
+        <h3><%= cat %></h3>
+      </a>
+    <% }) %>
+  </div>
+</section>
+
+<section class="featured-section">
+  <h2 class="section-title">Featured Neural Modules</h2>
+  <div class="parts-grid">
+    <% featured.forEach(p => { %>
+      <a href="/part/<%= p.id %>" class="part-card glass-card">
+        <div class="part-cat-badge"><%= p.category %></div>
+        <h3 class="part-name"><%= p.name %></h3>
+        <div class="part-price">₿ <%= p.price.toFixed(2) %></div>
+        <div class="part-stock <% if(p.stock <= 0) { %>out<% } else if(p.stock < 10) { %>low<% } %>">
+          <% if(p.stock <= 0) { %>Out of Stock<% } else if(p.stock < 10) { %><%= p.stock %> left<% } else { %>In Stock<% } %>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+</section>

@@ -1,0 +1,43 @@
+<h2 class="section-title">BrainOS Distribution Center</h2>
+
+<div class="os-grid">
+  <% distros.forEach(d => { %>
+    <div class="os-card glass-card" data-distro-id="<%= d.id %>">
+      <div class="os-header">
+        <h3><%= d.name %></h3>
+        <span class="os-version">v<%= d.version %></span>
+      </div>
+      <div class="os-kernel">Kernel: <%= d.kernel %></div>
+      <p class="os-desc"><%= d.description %></p>
+      <div class="os-meta">
+        <span class="os-size">📏 <%= (d.size_mb / 1024).toFixed(1) %> GB</span>
+        <span class="os-price"><%= d.price > 0 ? '₿ ' + d.price.toFixed(2) : 'Free' %></span>
+      </div>
+      <button class="btn btn-primary btn-sm os-flash-btn" data-name="<%= d.name %>" data-version="<%= d.version %>" data-kernel="<%= d.kernel %>" data-size="<%= d.size_mb %>">
+        Flash to Brain
+      </button>
+    </div>
+  <% }) %>
+</div>
+
+<% if (totalPages > 1) { %>
+<div class="pagination">
+  <% if (page > 1) { %>
+    <a href="?page=<%= page-1 %>" class="btn btn-secondary btn-sm">← Prev</a>
+  <% } %>
+  <span class="page-info">Page <%= page %> / <%= totalPages %></span>
+  <% if (page < totalPages) { %>
+    <a href="?page=<%= page+1 %>" class="btn btn-secondary btn-sm">Next →</a>
+  <% } %>
+</div>
+<% } %>
+
+<div id="terminal-overlay" class="terminal-overlay hidden">
+  <div class="terminal-window glass-card">
+    <div class="terminal-bar">
+      <span>BrainOS Neural Flash Terminal</span>
+      <button id="terminal-close">&times;</button>
+    </div>
+    <div id="terminal-output" class="terminal-output"></div>
+  </div>
+</div>
