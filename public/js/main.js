@@ -387,7 +387,7 @@ function initSandbox() {
     writeOut('Restored session: ' + state.env.osName, 'output-line-info');
     writeOut('Type "help" for commands.', 'output-line-info');
   } else {
-    writeOut('BrainOS Sandbox v3.7.1', 'output-line-info');
+    writeOut('BrainOS Sandbox v3.7.2', 'output-line-info');
     writeOut('No OS booted. Type "install-os <name>" to download one, then "boot <name>" to boot it.', 'output-line-info');
     writeOut('Type "help" for all commands.', 'output-line-info');
   }
