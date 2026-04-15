@@ -1,0 +1,49 @@
+<h2 class="section-title">🧠 BrainOS Sandbox</h2>
+
+<div id="sandbox-setup" class="sandbox-setup glass-card">
+  <h3>Select Your Operating System</h3>
+  <p style="color:var(--text-dim);margin:0.5rem 0 1rem;font-size:0.9rem;">Choose an OS to install in your neural sandbox. Your selection is saved locally.</p>
+  <select id="sandbox-os-select">
+    <% distros.forEach(d => { %>
+      <option value="<%= d.name %>"><%= d.name %> v<%= d.version %> — <%= d.price > 0 ? '₿ ' + d.price.toFixed(2) : 'Free' %></option>
+    <% }) %>
+  </select>
+  <button id="sandbox-install-btn" class="btn btn-primary" style="margin-top:1rem;">⚡ Install OS</button>
+  <div id="install-progress" class="sync-progress hidden" style="margin-top:1rem;">
+    <div class="progress-bar"><div class="progress-fill" id="install-fill"></div></div>
+    <div id="install-status" class="sync-status" style="font-family:var(--mono);font-size:0.8rem;"></div>
+  </div>
+</div>
+
+<div id="sandbox-terminal" class="sandbox-terminal hidden">
+  <div class="terminal-toolbar glass-card">
+    <div class="terminal-toolbar-left">
+      <span id="sandbox-os-label">🧠 Ubuntu Neural</span>
+      <button id="sandbox-change-os" class="btn btn-secondary btn-sm">Change OS</button>
+      <button id="sandbox-fullscreen" class="btn btn-secondary btn-sm">⛶ Fullscreen</button>
+    </div>
+    <div class="terminal-toolbar-right">
+      <span id="sandbox-cwd" style="color:var(--text-dim);font-family:var(--mono);font-size:0.75rem;">~</span>
+    </div>
+  </div>
+  <div id="sandbox-output" class="sandbox-output"></div>
+  <div class="sandbox-input-row">
+    <span class="sandbox-prompt" id="sandbox-prompt">🧠 ~ $</span>
+    <input id="sandbox-input" type="text" placeholder="Type a command... (try 'help')" autocomplete="off" spellcheck="false">
+  </div>
+</div>
+
+<div id="game-overlay" class="game-overlay hidden">
+  <div class="game-container glass-card">
+    <div class="game-header">
+      <span id="game-title">Game</span>
+      <button id="game-quit" class="btn btn-secondary btn-sm">✕ Quit</button>
+    </div>
+    <canvas id="game-canvas" width="480" height="360"></canvas>
+    <div id="game-text-output" class="game-text-output"></div>
+    <div id="game-input-row" class="sandbox-input-row hidden">
+      <span class="sandbox-prompt">></span>
+      <input id="game-input" type="text" autocomplete="off" spellcheck="false">
+    </div>
+  </div>
+</div>
