@@ -62,7 +62,7 @@ function initCheckout(){
 
 function initOSInstaller(){const o=document.getElementById('terminal-overlay'),out=document.getElementById('terminal-output'),cl=document.getElementById('terminal-close');if(!o)return;cl.onclick=()=>o.classList.add('hidden');
   document.querySelectorAll('.os-flash-btn').forEach(b=>{b.onclick=async e=>{e.preventDefault();e.stopPropagation();const{name:n,version:v,kernel:k,size:s}=b.dataset;o.classList.remove('hidden');out.textContent='';
-    for(const l of[`> BRAINOS FLASH v3.7.1`,`> Target: ${n} v${v}`,``,`[SCAN] Neural bus... OK`,`[SCAN] Compatibility... OK`,''`[WRITE] Flashing ${n}...`]){out.textContent+=l+'\n';out.scrollTop=out.scrollHeight;await new Promise(r=>setTimeout(r,200+Math.random()*200))}
+    for(const l of[`> BRAINOS FLASH v3.7.1`,`> Target: ${n} v${v}`,``,`[SCAN] Neural bus... OK`,`[SCAN] Compatibility... OK`,'',`[WRITE] Flashing ${n}...`]){out.textContent+=l+'\n';out.scrollTop=out.scrollHeight;await new Promise(r=>setTimeout(r,200+Math.random()*200))}
     for(let i=0;i<=20;i++){out.textContent+=`[WRITE] ${'█'.repeat(Math.floor(i/2))}${'░'.repeat(10-Math.floor(i/2))} ${Math.round(i/20*100)}%\r`;out.scrollTop=out.scrollHeight;await new Promise(r=>setTimeout(r,120+Math.random()*80))}
     for(const l of[``,`[WRITE] Flashed.`,`[BOOT] ╔════════════════════════════╗`,`[BOOT] ║ ${n.padEnd(24)}║`,`[BOOT] ║ Neuro-Link ACTIVE        ║`,`[BOOT] ╚════════════════════════════╝`,'',`✅ ${n} v${v} flashed!`]){out.textContent+=l+'\n';out.scrollTop=out.scrollHeight;await new Promise(r=>setTimeout(r,150+Math.random()*100))}}})}
 

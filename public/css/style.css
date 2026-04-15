@@ -449,6 +449,18 @@ body {
   width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
   color: var(--text); padding: 0.6rem; border-radius: 6px; font-size: 0.9rem; font-family: var(--font);
 }
+.brain-stats { display: flex; gap: 2rem; }
+.brain-item { padding: 1.2rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.bi-header { display: flex; justify-content: space-between; align-items: center; }
+.bi-header h3 { font-size: 0.95rem; font-weight: 600; }
+.bi-type { font-size: 0.7rem; color: var(--text-dim); }
+.bi-cat { font-size: 0.7rem; color: var(--cyan); background: rgba(6,182,212,0.1); padding: 0.1rem 0.4rem; border-radius: 3px; width: fit-content; }
+.bi-price { font-size: 1rem; font-weight: 700; color: var(--accent2); font-family: var(--mono); }
+.bi-refund { font-size: 0.75rem; color: var(--text-dim); font-family: var(--mono); }
+.bi-refund-note { font-size: 0.65rem; color: var(--text-dim); opacity: 0.6; }
+.btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; box-shadow: 0 0 15px rgba(239,68,68,0.3); margin-top: 0.3rem; }
+.btn-danger:hover { box-shadow: 0 0 25px rgba(239,68,68,0.5); transform: translateY(-1px); }
+
 .sell-input:focus { outline: none; border-color: var(--accent); }
 textarea.sell-input { resize: vertical; }
 .sell-result { margin-top: 1rem; padding: 0.8rem; border-radius: 8px; font-size: 0.9rem; }
