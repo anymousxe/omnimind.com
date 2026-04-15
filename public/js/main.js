@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  initChat(); initCheckout(); initOSInstaller(); initSandbox(); initSell();
+  initChat(); initCheckout(); initOSInstaller(); initSandbox(); initMyBrain();
 });
 
 function renderMarkdown(t) {
@@ -32,6 +32,12 @@ function initChat() {
   send.onclick=sendMsg;input.onkeydown=e=>{if(e.key==='Enter')sendMsg()};
 }
 
+const INVENTORY_KEY='cortex-my-brain';
+function getInventory(){try{return JSON.parse(localStorage.getItem(INVENTORY_KEY)||'[]')}catch(e){return[]}}
+function saveInventory(inv){localStorage.setItem(INVENTORY_KEY,JSON.stringify(inv))}
+function addToInventory(item){const inv=getInventory();if(!inv.find(i=>i.id===item.id&&i.type===item.type)){inv.push(item);saveInventory(inv)}}
+function removeFromInventory(id,type){const inv=getInventory().filter(i=>!(i.id===id&&i.type===type));saveInventory(inv);return inv}
+
 function initCheckout(){
   function bindSyncBtn(btn){
     btn.onclick=async()=>{
@@ -42,6 +48,12 @@ function initCheckout(){
       if(!p||!f||!s)return;
       btn.disabled=true;p.classList.remove('hidden');s.classList.remove('success');f.style.width='0%';
       for(const[pct,msg]of[[10,'Initiating neural handshake...'],[25,'Scanning cortical topology...'],[40,'Mapping synaptic pathways...'],[55,'Calibrating bio-coolant...'],[70,'Flashing neural firmware...'],[85,'Verifying cortex integrity...'],[95,'Establishing link...'],[100,'✅ Neural Link Established!']]){await new Promise(r=>setTimeout(r,400+Math.random()*300));f.style.width=pct+'%';s.textContent=msg;if(pct===100)s.classList.add('success')}
+      const itemId=btn.dataset.id, itemName=btn.dataset.name, itemPrice=btn.dataset.price;
+      if(btn.classList.contains('sync-brain-btn')&&itemId){
+        try{const r=await fetch(`/api/part-info/${itemId}`);const d=await r.json();if(d.id)addToInventory({id:d.id,name:d.name,price:d.price,category:d.category,specs:d.specs,type:'part',boughtAt:Date.now()})}catch(e){}
+      } else if(btn.classList.contains('pb-buy-btn')&&itemName){
+        addToInventory({id:'pb-'+Date.now(),name:itemName,price:parseFloat(itemPrice)||0,type:'prebuilt',boughtAt:Date.now()})
+      }
       try{await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:[btn.dataset.id||btn.dataset.name]})})}catch(e){}
     };
   }
@@ -191,20 +203,38 @@ function initSandbox(){
     catch(e){browserContent.textContent='Failed to load: '+url}}
 }
 
-function initSell(){
-  const btn=document.getElementById('sell-submit'),result=document.getElementById('sell-result');
-  if(!btn)return;
-  btn.onclick=async()=>{
-    const name=document.getElementById('sell-name').value.trim();
-    const category=document.getElementById('sell-category').value;
-    const price=parseFloat(document.getElementById('sell-price').value);
-    const specsRaw=document.getElementById('sell-specs').value.trim();
-    if(!name||!price){result.className='sell-result error';result.classList.remove('hidden');result.textContent='Name and price required.';return}
-    const specs={};specsRaw.split('\n').forEach(l=>{const[k,v]=l.split(':').map(s=>s.trim());if(k&&v)specs[k]=v});
-    btn.disabled=true;btn.textContent='Listing...';
-    try{const r=await fetch('/api/sell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,category,price,specs})});const d=await r.json();
-      if(d.success){result.className='sell-result success';result.classList.remove('hidden');result.innerHTML=`✅ Listed! <strong>${d.part.name}</strong> (ID: ${d.part.id}) — ₿${d.part.price.toFixed(2)} is now on the marketplace. <a href="/gallery?category=${encodeURIComponent(d.part.category)}" style="color:var(--cyan)">View in Gallery →</a>`;document.getElementById('sell-name').value='';document.getElementById('sell-price').value='';document.getElementById('sell-specs').value=''}
-      else{result.className='sell-result error';result.classList.remove('hidden');result.textContent=d.error||'Failed to list.'}
-    }catch(e){result.className='sell-result error';result.classList.remove('hidden');result.textContent='Server error.'}
-    btn.disabled=false;btn.textContent='🛒 List on Marketplace'};
+function initMyBrain(){
+  const grid=document.getElementById('my-brain-grid'),empty=document.getElementById('my-brain-empty'),balanceEl=document.getElementById('brain-balance'),totalEl=document.getElementById('brain-total');
+  if(!grid)return;
+  let balance=parseFloat(localStorage.getItem('cortex-balance')||'10000');
+  function saveBalance(){localStorage.setItem('cortex-balance',balance.toFixed(2))}
+  function render(){
+    const inv=getInventory();
+    if(balanceEl)balanceEl.textContent='₿ '+balance.toFixed(2);
+    if(totalEl)totalEl.textContent='₿ '+inv.reduce((s,i)=>s+(i.price||0),0).toFixed(2);
+    if(!inv.length){grid.innerHTML='';if(empty)empty.classList.remove('hidden');return}
+    if(empty)empty.classList.add('hidden');
+    grid.innerHTML=inv.map(item=>{
+      const refund=Math.round(item.price*0.8*100)/100;
+      const isPb=item.type==='prebuilt';
+      return `<div class="brain-item glass-card" data-id="${item.id}" data-type="${item.type}" data-price="${item.price}">
+        <div class="bi-header"><h3>${item.name}</h3><span class="bi-type">${isPb?'🏗️ Prebuilt':'⚙️ Part'}</span></div>
+        ${item.category?`<span class="bi-cat">${item.category}</span>`:''}
+        <div class="bi-price">₿ ${item.price.toFixed(2)}</div>
+        <div class="bi-refund">Sell back for ₿ ${refund.toFixed(2)} <span class="bi-refund-note">(80% refund)</span></div>
+        <button class="btn btn-danger btn-sm brain-sell-btn" data-id="${item.id}" data-type="${item.type}" data-refund="${refund}">💸 Sell Back</button>
+      </div>`
+    }).join('');
+    grid.querySelectorAll('.brain-sell-btn').forEach(btn=>{
+      btn.onclick=()=>{
+        const id=btn.dataset.id,type=btn.dataset.type,refund=parseFloat(btn.dataset.refund);
+        const card=btn.closest('.brain-item');
+        btn.disabled=true;btn.textContent='Selling...';
+        removeFromInventory(id,type);balance+=refund;saveBalance();
+        card.style.transition='opacity 0.3s, transform 0.3s';card.style.opacity='0';card.style.transform='scale(0.9)';
+        setTimeout(()=>render(),300);
+      };
+    });
+  }
+  render();
 }
