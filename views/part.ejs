@@ -4,7 +4,7 @@
     <span class="part-cat-badge"><%= part.category %></span>
   </div>
   <h1 class="pd-name"><%= part.name %></h1>
-  <div class="pd-price">₿ <%= part.price.toFixed(2) %></div>
+  <div class="pd-price">$ <%= part.price.toFixed(2) %></div>
   <div class="pd-stock <% if(part.stock <= 0) { %>out<% } %>">
     <% if(part.stock <= 0) { %>⚠️ Out of Stock<% } else { %>✅ <%= part.stock %> in stock<% } %>
   </div>
@@ -35,7 +35,7 @@
       <a href="/part/<%= p.id %>" class="part-card glass-card">
         <div class="part-cat-badge"><%= p.category %></div>
         <h3 class="part-name"><%= p.name %></h3>
-        <div class="part-price">₿ <%= p.price.toFixed(2) %></div>
+        <div class="part-price">$ <%= p.price.toFixed(2) %></div>
       </a>
     <% }) %>
   </div>

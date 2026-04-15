@@ -11,7 +11,7 @@
       <p class="os-desc"><%= d.description %></p>
       <div class="os-meta">
         <span class="os-size">📏 <%= (d.size_mb / 1024).toFixed(1) %> GB</span>
-        <span class="os-price"><%= d.price > 0 ? '₿ ' + d.price.toFixed(2) : 'Free' %></span>
+        <span class="os-price"><%= d.price > 0 ? '$ ' + d.price.toFixed(2) : 'Free' %></span>
       </div>
     </a>
   <% }) %>

@@ -34,7 +34,7 @@
       <a href="/part/<%= p.id %>" class="part-card glass-card">
         <div class="part-cat-badge"><%= p.category %></div>
         <h3 class="part-name"><%= p.name %></h3>
-        <div class="part-price">₿ <%= p.price.toFixed(2) %></div>
+        <div class="part-price">$ <%= p.price.toFixed(2) %></div>
         <div class="part-stock <% if(p.stock <= 0) { %>out<% } else if(p.stock < 10) { %>low<% } %>">
           <% if(p.stock <= 0) { %>Out of Stock<% } else if(p.stock < 10) { %><%= p.stock %> left<% } else { %>In Stock<% } %>
         </div>

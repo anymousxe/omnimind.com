@@ -14,7 +14,7 @@
       <tr><td class="spec-key">Version</td><td class="spec-val"><%= distro.version %></td></tr>
       <tr><td class="spec-key">Kernel</td><td class="spec-val"><%= distro.kernel %></td></tr>
       <tr><td class="spec-key">Image Size</td><td class="spec-val"><%= (distro.size_mb / 1024).toFixed(1) %> GB</td></tr>
-      <tr><td class="spec-key">Price</td><td class="spec-val"><%= distro.price > 0 ? '₿ ' + distro.price.toFixed(2) : 'Free' %></td></tr>
+      <tr><td class="spec-key">Price</td><td class="spec-val"><%= distro.price > 0 ? '$ ' + distro.price.toFixed(2) : 'Free' %></td></tr>
     </table>
   </div>
 
@@ -50,7 +50,7 @@
         <div class="os-kernel">Kernel: <%= d.kernel %></div>
         <div class="os-meta">
           <span class="os-size">📏 <%= (d.size_mb / 1024).toFixed(1) %> GB</span>
-          <span class="os-price"><%= d.price > 0 ? '₿ ' + d.price.toFixed(2) : 'Free' %></span>
+          <span class="os-price"><%= d.price > 0 ? '$ ' + d.price.toFixed(2) : 'Free' %></span>
         </div>
       </a>
     <% }) %>

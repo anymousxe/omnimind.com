@@ -16,5 +16,8 @@
     "helmet": "^8.0.0",
     "node-fetch": "^2.7.0",
     "xss": "^1.0.15"
+  },
+  "devDependencies": {
+    "acorn": "^8.16.0"
   }
 }
