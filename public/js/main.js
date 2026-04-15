@@ -118,12 +118,68 @@ function initChat() {
   sendBtn.addEventListener('click', send);
   input.addEventListener('keydown', function(e) { if (e.key === 'Enter') send(); });
 
+  function formatToolBadge(action, data) {
+    var icon = '\u2699';
+    var label = action;
+    var detail = '';
+    var statusClass = 'tool-status-ok';
+
+    if (typeof data === 'string') {
+      detail = data;
+    } else if (data && typeof data === 'object') {
+      if (data.message) {
+        detail = data.message;
+      } else if (data.results && Array.isArray(data.results)) {
+        detail = data.results.length + ' result' + (data.results.length === 1 ? '' : 's') + ' found';
+        if (data.results.length > 0) {
+          var names = data.results.slice(0, 3).map(function(r) { return r.name || 'Part #' + (r.id || '?'); });
+          detail += ' \u2014 ' + names.join(', ') + (data.results.length > 3 ? ' +' + (data.results.length - 3) + ' more' : '');
+        }
+      } else if (data.success === false) {
+        statusClass = 'tool-status-fail';
+        detail = data.message || data.error || 'Failed';
+      } else {
+        detail = data.message || JSON.stringify(data).slice(0, 120);
+      }
+    }
+
+    var actionIcons = {
+      'add_part': '\U0001f527',
+      'remove_part': '\U0001f5d1',
+      'search_parts': '\U0001f50d',
+      'lookup_compatibility': '\U0001f517',
+      'set_price': '\U0001f4b0',
+      'set_stock': '\U0001f4e6',
+      'create_sale': '\U0001f525',
+      'select_part_for_user': '\u26a1',
+      'buy_and_select_part': '\U0001f6d2',
+      'install_os_for_user': '\U0001f4be'
+    };
+    var actionLabels = {
+      'add_part': 'Manufacturing Part',
+      'remove_part': 'Decommissioning Part',
+      'search_parts': 'Searching Catalog',
+      'lookup_compatibility': 'Checking Compatibility',
+      'set_price': 'Adjusting Price',
+      'set_stock': 'Updating Stock',
+      'create_sale': 'Creating Sale',
+      'select_part_for_user': 'Selecting Part',
+      'buy_and_select_part': 'Buying & Selecting',
+      'install_os_for_user': 'Installing OS'
+    };
+
+    icon = actionIcons[action] || icon;
+    label = actionLabels[action] || action;
+
+    return '<div class="tool-badge"><div class="tool-badge-header"><span class="tool-badge-icon">' + icon + '</span><span class="tool-badge-label">' + label + '</span><span class="' + statusClass + '">' + (data && data.success === false ? '\u2717' : '\u2713') + '</span></div>' + (detail ? '<div class="tool-badge-detail">' + detail + '</div>' : '') + '</div>';
+  }
+
   function doStream(msg) {
     abortCtrl = new AbortController();
     stopBtn.classList.remove('hidden');
     var assistantDiv = addMsg('assistant', '');
     var fullText = '';
-    var toolLabels = [];
+    var toolBadges = [];
 
     fetch('/api/chat', {
       method: 'POST',
@@ -154,14 +210,19 @@ function initChat() {
             var ev = JSON.parse(line.slice(6));
             if (ev.type === 'text') {
               fullText += ev.data;
-              assistantDiv.innerHTML = renderMarkdown(fullText) + toolLabels.map(function(l) { return '<div class="tool-label">' + l + '</div>'; }).join('');
+              assistantDiv.innerHTML = renderMarkdown(fullText) + toolBadges.join('');
               msgBox.scrollTop = msgBox.scrollHeight;
             } else if (ev.type === 'tool') {
-              toolLabels.push('\u2699 ' + ev.data.action + ': ' + (ev.data.result || ''));
-              assistantDiv.innerHTML = renderMarkdown(fullText) + toolLabels.map(function(l) { return '<div class="tool-label">' + l + '</div>'; }).join('');
+              toolBadges.push(formatToolBadge(ev.data.action, ev.data.result));
+              assistantDiv.innerHTML = renderMarkdown(fullText) + toolBadges.join('');
               msgBox.scrollTop = msgBox.scrollHeight;
             } else if (ev.type === 'sandbox_action') {
               handleSandboxAction(ev.data);
+              if (ev.data.label) {
+                toolBadges.push('<div class="tool-badge tool-badge-action"><div class="tool-badge-header"><span class="tool-badge-icon">\u26a1</span><span class="tool-badge-label">' + ev.data.label + '</span><span class="tool-status-ok">\u2713</span></div></div>');
+                assistantDiv.innerHTML = renderMarkdown(fullText) + toolBadges.join('');
+                msgBox.scrollTop = msgBox.scrollHeight;
+              }
             } else if (ev.type === 'done' || ev.type === 'error') {
               stopBtn.classList.add('hidden');
               abortCtrl = null;

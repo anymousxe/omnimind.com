@@ -251,6 +251,40 @@ body {
 .chat-msg.assistant { background: rgba(255,255,255,0.05); color: var(--text); align-self: flex-start; }
 .chat-msg.tool-result { background: rgba(34,197,94,0.1); color: var(--green); align-self: flex-start; font-size: 0.75rem; font-family: var(--mono); }
 
+.tool-badge {
+  margin-top: 0.4rem;
+  background: rgba(124,58,237,0.08);
+  border: 1px solid rgba(124,58,237,0.2);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 0.78rem;
+  max-width: 100%;
+}
+.tool-badge-action {
+  border-color: rgba(6,182,212,0.3);
+  background: rgba(6,182,212,0.06);
+}
+.tool-badge-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  background: rgba(255,255,255,0.03);
+  font-weight: 600;
+}
+.tool-badge-icon { font-size: 0.85rem; }
+.tool-badge-label { color: var(--cyan); font-family: var(--mono); font-size: 0.75rem; flex: 1; }
+.tool-status-ok { color: var(--green); font-size: 0.75rem; font-weight: 700; }
+.tool-status-fail { color: var(--red); font-size: 0.75rem; font-weight: 700; }
+.tool-badge-detail {
+  padding: 0.3rem 0.6rem 0.4rem;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-family: var(--mono);
+  line-height: 1.4;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
 .chat-input-area {
   display: flex; gap: 0.5rem; padding: 0.8rem; border-top: 1px solid var(--glass-border);
 }
