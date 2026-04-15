@@ -1,0 +1,35 @@
+<h2 class="section-title">🏗️ Prebuilt Neural Rigs</h2>
+<p style="color:var(--text-dim);margin-bottom:1.5rem;text-align:center;">Complete brain configurations — ready to install. Discounts applied at checkout.</p>
+
+<div class="prebuilts-grid">
+  <% prebuilts.forEach(pb => { %>
+    <div class="prebuilt-card glass-card">
+      <div class="pb-header">
+        <h3><%= pb.name %></h3>
+        <% if (pb.discount > 0) { %>
+          <span class="pb-sale">🔥 <%= pb.discount %>% OFF</span>
+        <% } %>
+      </div>
+      <p class="pb-desc"><%= pb.desc %></p>
+      <div class="pb-parts">
+        <% pb.parts.forEach(p => { %>
+          <span class="pb-part-tag"><%= p %></span>
+        <% }) %>
+      </div>
+      <div class="pb-pricing">
+        <% if (pb.discount > 0) { %>
+          <span class="pb-old-price">₿ <%= (pb.price / (1 - pb.discount/100)).toFixed(2) %></span>
+          <span class="pb-new-price">₿ <%= pb.price.toFixed(2) %></span>
+        <% } else { %>
+          <span class="pb-new-price">₿ <%= pb.price.toFixed(2) %></span>
+        <% } %>
+      </div>
+      <button class="btn btn-primary btn-sm pb-buy-btn" data-name="<%= pb.name %>" data-price="<%= pb.price %>" data-parts='<%= JSON.stringify(pb.parts).replace(/'/g,"&#39;") %>'>⚡ Sync to Brain</button>
+    </div>
+  <% }) %>
+</div>
+
+<div id="sync-progress" class="sync-progress hidden" style="max-width:500px;margin:2rem auto;">
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  <div id="sync-status" class="sync-status">Initiating neural handshake...</div>
+</div>

@@ -32,7 +32,7 @@ function initChat() {
   send.onclick=sendMsg;input.onkeydown=e=>{if(e.key==='Enter')sendMsg()};
 }
 
-function initCheckout(){document.querySelectorAll('.sync-brain-btn').forEach(b=>{b.onclick=async()=>{const p=document.getElementById('sync-progress'),f=document.getElementById('progress-fill'),s=document.getElementById('sync-status');if(!p)return;b.disabled=true;p.classList.remove('hidden');s.classList.remove('success');f.style.width='0%';
+function initCheckout(){document.querySelectorAll('.sync-brain-btn, .pb-buy-btn').forEach(b=>{b.onclick=async()=>{const p=document.getElementById('sync-progress'),f=document.getElementById('progress-fill'),s=document.getElementById('sync-status');if(!p)return;b.disabled=true;p.classList.remove('hidden');s.classList.remove('success');f.style.width='0%';
   for(const[pct,msg]of[[10,'Initiating neural handshake...'],[25,'Scanning cortical topology...'],[40,'Mapping synaptic pathways...'],[55,'Calibrating bio-coolant...'],[70,'Flashing neural firmware...'],[85,'Verifying cortex integrity...'],[95,'Establishing link...'],[100,'✅ Neural Link Established!']]){await new Promise(r=>setTimeout(r,400+Math.random()*300));f.style.width=pct+'%';s.textContent=msg;if(pct===100)s.classList.add('success')}}})}
 
 function initOSInstaller(){const o=document.getElementById('terminal-overlay'),out=document.getElementById('terminal-output'),cl=document.getElementById('terminal-close');if(!o)return;cl.onclick=()=>o.classList.add('hidden');
@@ -112,6 +112,10 @@ function initSandbox(){
         }catch(e){writeOut('Install failed.','output-line-err')}}
       else if(d.reboot){writeOut('🔄 Rebooting...','output-line-info');await new Promise(r=>setTimeout(r,2000));output.innerHTML='';writeOut('🧠 Rebooted.','output-line-info')}
       else if(d.browser)openBrowser(d.browser);
+      else if(d.ai){writeOut('🧠 Thinking...','output-line-info');
+        try{const ar=await fetch('/api/sandbox/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:d.ai,osName:state?.env?.osName||'BrainOS',specs:Object.values(rigSpecs)})});const ad=await ar.json();
+          writeOut('','');ad.reply.split('\n').forEach(l=>writeOut(l.replace(/\*\*(.+?)\*\*/g,'$1').replace(/\*(.+?)\*/g,'$1').replace(/`([^`]+)`/g,'$1')),'output-line-info')}
+        catch(e){writeOut('AI offline.','output-line-err')}}
       if(d.state){state=d.state;state.env.parts=Object.values(rigSpecs);saveCache();updatePrompt()}
     }catch(e){writeOut('Error: disrupted.','output-line-err')}};
 
