@@ -382,6 +382,7 @@ function initSandbox() {
   setOSLabel();
 
   if (loadCache() && state && state.env && state.env.osName) {
+    addOSToInventory(state.env.osName);
     setOSLabel();
     writeOut('Restored session: ' + state.env.osName, 'output-line-info');
     writeOut('Type "help" for commands.', 'output-line-info');
