@@ -73,6 +73,59 @@ function removeFromOSList(name) {
   if (idx >= 0) { list.splice(idx, 1); saveOSList(list); }
 }
 
+var PACKAGES_KEY = 'cortex_packages';
+var CUSTOM_OS_KEY = 'cortex_custom_os';
+var UPLOADED_KEY = 'cortex_uploaded_pkgs';
+
+function getPackages() {
+  try { return JSON.parse(localStorage.getItem(PACKAGES_KEY)) || []; }
+  catch(e) { return []; }
+}
+
+function savePackages(pkgs) {
+  localStorage.setItem(PACKAGES_KEY, JSON.stringify(pkgs));
+}
+
+function addPackage(pkg) {
+  var pkgs = getPackages();
+  var idx = pkgs.findIndex(function(p) { return p.name === pkg.name; });
+  if (idx >= 0) pkgs[idx] = pkg;
+  else pkgs.push(pkg);
+  savePackages(pkgs);
+  return true;
+}
+
+function removePackage(name) {
+  var pkgs = getPackages();
+  pkgs = pkgs.filter(function(p) { return p.name !== name; });
+  savePackages(pkgs);
+}
+
+function getUploadedPkgs() {
+  try { return JSON.parse(localStorage.getItem(UPLOADED_KEY)) || []; }
+  catch(e) { return []; }
+}
+
+function addUploadedPkg(pkg) {
+  var up = getUploadedPkgs();
+  if (!up.some(function(p) { return p.name === pkg.name; })) { up.push({ name: pkg.name, type: pkg.type, description: pkg.description || '', version: pkg.version || '1.0.0' }); }
+  localStorage.setItem(UPLOADED_KEY, JSON.stringify(up));
+}
+
+function getCustomOSList() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_OS_KEY)) || []; }
+  catch(e) { return []; }
+}
+
+function addCustomOS(osData) {
+  var list = getCustomOSList();
+  var idx = list.findIndex(function(o) { return o.name === osData.name; });
+  if (idx >= 0) list[idx] = osData;
+  else list.push(osData);
+  localStorage.setItem(CUSTOM_OS_KEY, JSON.stringify(list));
+  addToOSList(osData.name);
+}
+
 function initChat() {
   var bubble = document.getElementById('chat-bubble');
   var panel = document.getElementById('chat-panel');
@@ -484,6 +537,39 @@ function initSandbox() {
   });
 
   function doBoot(osName) {
+    var customOSList = getCustomOSList();
+    var customOS = customOSList.find(function(o) { return o.name === osName; });
+
+    if (customOS) {
+      state.fs = JSON.parse(JSON.stringify(defaultFS));
+      state.cwd = '/home/neural-user';
+      state.env = { osName: osName, bootTime: Date.now(), installedPkgs: ['brain-core', 'dream-daemon', 'neuro-utils'], parts: state.env.parts || [], agentName: agentName };
+      state.env.customShell = {
+        pkg: customOS.pkg || 'custom-pkg',
+        install: customOS.install || 'custom-pkg install',
+        remove: customOS.remove || 'custom-pkg remove',
+        update: customOS.update || 'custom-pkg update',
+        upgrade: customOS.upgrade || 'custom-pkg upgrade',
+        search: customOS.search || 'custom-pkg search',
+        list: customOS.list || 'custom-pkg list'
+      };
+      state.env.exclusiveCommands = customOS.exclusive_commands || [];
+      booted = true;
+      saveCache();
+      updatePrompt();
+      if (customOS.boot_message) {
+        customOS.boot_message.split('\n').forEach(function(l) { printLine('<span style="color:#7c3aed">' + l + '</span>'); });
+      } else {
+        printLine('<span style="color:#22c55e">Booting ' + osName + '...</span>');
+        printLine('<span style="color:#06b6d4">Kernel loaded. Neural pathways connected.</span>');
+      }
+      printLine('<span style="color:#7c3aed">Welcome to ' + osName + '. Type "help" for commands.</span>');
+      if (customOS.exclusive_commands && customOS.exclusive_commands.length) {
+        printLine('<span style="color:#06b6d4">Exclusive commands: ' + customOS.exclusive_commands.map(function(c) { return c.cmd; }).join(', ') + '</span>');
+      }
+      return;
+    }
+
     fetch('/api/sandbox/install-os', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -645,6 +731,163 @@ function initSandbox() {
       return;
     }
 
+    if (cmd === 'pkg-create') {
+      var pkgType = parts[1] || '';
+      var pkgName = parts.slice(2).join(' ');
+      var validTypes = ['game', 'malware', 'browser', 'engine', 'app', 'tool'];
+      if (!pkgType || !validTypes.indexOf(pkgType) === -1 || !pkgName) {
+        printLine('<span style="color:#eab308">Usage: pkg-create &lt;type&gt; &lt;name&gt;</span>');
+        printLine('<span style="color:#94a3b8">Types: game, malware, browser, engine, app, tool</span>');
+        return;
+      }
+      printLine('<span style="color:#7c3aed">[AI] Generating ' + pkgType + ' package "' + pkgName + '"...</span>');
+      fetch('/api/sandbox/create-package', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: pkgName, type: pkgType, osName: state.env.osName || 'BrainOS' })
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success && data.package) {
+          addPackage(data.package);
+          printLine('<span style="color:#22c55e">\u2713 Package "' + pkgName + '" created! Run "pkg-run ' + pkgName + '" or "pkg-upload ' + pkgName + '".</span>');
+          printLine('<span style="color:#94a3b8">' + (data.package.description || '').slice(0, 120) + '</span>');
+        } else {
+          printLine('<span style="color:#ef4444">Failed to create package: ' + (data.error || 'Unknown error') + '</span>');
+        }
+      }).catch(function() { printLine('<span style="color:#ef4444">Package creation failed.</span>'); });
+      return;
+    }
+
+    if (cmd === 'pkg-upload') {
+      var uploadName = parts.slice(1).join(' ');
+      if (!uploadName) { printLine('<span style="color:#eab308">Usage: pkg-upload &lt;name&gt;</span>'); return; }
+      var pkgs = getPackages();
+      var found = pkgs.find(function(p) { return p.name === uploadName; });
+      if (!found) { printLine('<span style="color:#ef4444">Package "' + uploadName + '" not found locally. Create it first with pkg-create.</span>'); return; }
+      addUploadedPkg(found);
+      printLine('<span style="color:#22c55e">\u2713 "' + uploadName + '" uploaded to neural repository! Others can install it.</span>');
+      return;
+    }
+
+    if (cmd === 'pkg-list') {
+      var pkgs = getPackages();
+      var uploaded = getUploadedPkgs();
+      if (pkgs.length === 0 && uploaded.length === 0) {
+        printLine('<span style="color:#94a3b8">No packages installed. Use pkg-create or apt install.</span>');
+        return;
+      }
+      printLine('<span style="color:#06b6d4">Installed Packages:</span>');
+      pkgs.forEach(function(p) {
+        var typeIcon = { game: '\U0001f3ae', malware: '\u2620', browser: '\U0001f310', engine: '\U0001f50d', app: '\U0001f4e6', tool: '\U0001f527' };
+        printLine('  ' + (typeIcon[p.type] || '\U0001f4e6') + ' ' + p.name + ' v' + (p.version || '1.0.0') + ' <span style="color:#94a3b8">(' + p.type + ')</span>');
+      });
+      if (uploaded.length > 0) {
+        printLine('');
+        printLine('<span style="color:#7c3aed">Uploaded to Repository:</span>');
+        uploaded.forEach(function(p) {
+          printLine('  \u2601 ' + p.name + ' v' + (p.version || '1.0.0') + ' <span style="color:#94a3b8">(' + p.type + ')</span>');
+        });
+      }
+      return;
+    }
+
+    if (cmd === 'pkg-run') {
+      var runName = parts.slice(1).join(' ');
+      if (!runName) { printLine('<span style="color:#eab308">Usage: pkg-run &lt;name&gt;</span>'); return; }
+      var pkgs = getPackages();
+      var pkg = pkgs.find(function(p) { return p.name === runName; });
+      if (!pkg) { printLine('<span style="color:#ef4444">Package "' + runName + '" not installed. Use apt install ' + runName + ' or pkg-create.</span>'); return; }
+      runPackageAction(pkg);
+      return;
+    }
+
+    if (cmd === 'pkg-remove') {
+      var rmName = parts.slice(1).join(' ');
+      if (!rmName) { printLine('<span style="color:#eab308">Usage: pkg-remove &lt;name&gt;</span>'); return; }
+      var pkgs = getPackages();
+      var found = pkgs.find(function(p) { return p.name === rmName; });
+      if (!found) { printLine('<span style="color:#ef4444">Package "' + rmName + '" not found.</span>'); return; }
+      removePackage(rmName);
+      if (state.env.installedPkgs) state.env.installedPkgs = state.env.installedPkgs.filter(function(p) { return p !== rmName; });
+      saveCache();
+      printLine('<span style="color:#22c55e">\u2713 Package "' + rmName + '" removed.</span>');
+      return;
+    }
+
+    if (cmd === 'create-os') {
+      var cosName = parts.slice(1).join(' ');
+      if (!cosName) { printLine('<span style="color:#eab308">Usage: create-os &lt;name&gt;</span>'); return; }
+      printLine('<span style="color:#7c3aed">[AI] Generating custom OS "' + cosName + '"...</span>');
+      fetch('/api/sandbox/create-os', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: cosName })
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success && data.os) {
+          addCustomOS(data.os);
+          printLine('<span style="color:#22c55e">\u2713 Custom OS "' + cosName + '" created! v' + (data.os.version || '1.0') + '</span>');
+          printLine('<span style="color:#94a3b8">' + (data.os.description || '').slice(0, 150) + '</span>');
+          if (data.os.exclusive_commands && data.os.exclusive_commands.length) {
+            printLine('<span style="color:#06b6d4">Exclusive commands:</span>');
+            data.os.exclusive_commands.forEach(function(c) { printLine('  \u26a1 ' + c.cmd + ' — ' + c.desc); });
+          }
+          printLine('<span style="color:#7c3aed">Run "boot ' + cosName + '" to boot it.</span>');
+        } else {
+          printLine('<span style="color:#ef4444">Failed to create OS: ' + (data.error || 'Unknown error') + '</span>');
+        }
+      }).catch(function() { printLine('<span style="color:#ef4444">OS creation failed.</span>'); });
+      return;
+    }
+
+    var exclusiveCommands = (state.env && state.env.exclusiveCommands) || [];
+    var exclusiveMatch = exclusiveCommands.find(function(c) { return c.cmd === cmd; });
+    if (exclusiveMatch) {
+      printLine('<span style="color:#06b6d4">\u26a1 ' + exclusiveMatch.cmd + '</span>');
+      printLine('<span style="color:#94a3b8">' + exclusiveMatch.desc + '</span>');
+      if (exclusiveMatch.output) {
+        exclusiveMatch.output.split('\n').forEach(function(l, idx) {
+          setTimeout(function() { printLine(l); }, idx * 150);
+        });
+      }
+      return;
+    }
+
+    function runPackageAction(pkg) {
+      if (pkg.type === 'malware') {
+        printLine('<span style="color:#ef4444">\u2620 EXECUTING MALWARE PAYLOAD: ' + pkg.name + '</span>');
+        printLine('<span style="color:#eab308">\u2620 Threat Level: ' + (pkg.threat_level || 'UNKNOWN') + '</span>');
+        if (pkg.payload) {
+          var lines = pkg.payload.split('\n');
+          lines.forEach(function(line, idx) {
+            setTimeout(function() { printLine('<span style="color:#ef4444">' + line + '</span>'); }, idx * 200);
+          });
+        }
+        if (pkg.antidote) {
+          setTimeout(function() {
+            printLine('');
+            printLine('<span style="color:#06b6d4">\U0001f48a Antidote available: ' + pkg.antidote + '</span>');
+            printLine('<span style="color:#94a3b8">Run "pkg-remove ' + pkg.name + '" to neutralize.</span>');
+          }, (pkg.payload ? pkg.payload.split('\n').length : 1) * 200 + 500);
+        }
+        return;
+      }
+      if (pkg.type === 'browser') {
+        openBrowser('home', pkg);
+        return;
+      }
+      if (pkg.type === 'game') {
+        handleGame(pkg.name);
+        return;
+      }
+      if (pkg.type === 'engine') {
+        openBrowser('home', null, pkg);
+        return;
+      }
+      if (pkg.content) {
+        printLine('<span style="color:#06b6d4">\U0001f4e6 ' + pkg.name + ' v' + (pkg.version || '1.0.0') + '</span>');
+        pkg.content.split('\n').forEach(function(l) { printLine(l); });
+      }
+    }
+
     fetch('/api/sandbox/exec', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -661,6 +904,89 @@ function initSandbox() {
       if (data.installOS) {
         addToOSList(data.installOS);
         printLine('<span style="color:#22c55e">\u2713 ' + data.installOS + ' downloaded. Run "boot ' + data.installOS + '" to boot.</span>');
+        return;
+      }
+      if (data.createPackage) {
+        var cp = data.createPackage;
+        printLine('<span style="color:#7c3aed">[AI] Generating ' + cp.type + ' package "' + cp.name + '"...</span>');
+        fetch('/api/sandbox/create-package', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: cp.name, type: cp.type, osName: state.env.osName || 'BrainOS' })
+        }).then(function(r2) { return r2.json(); }).then(function(d2) {
+          if (d2.success && d2.package) {
+            addPackage(d2.package);
+            printLine('<span style="color:#22c55e">\u2713 Package "' + cp.name + '" created! Run "pkg-run ' + cp.name + '" or "pkg-upload ' + cp.name + '".</span>');
+            printLine('<span style="color:#94a3b8">' + (d2.package.description || '').slice(0, 120) + '</span>');
+          } else {
+            printLine('<span style="color:#ef4444">Failed: ' + (d2.error || 'Unknown error') + '</span>');
+          }
+        }).catch(function() { printLine('<span style="color:#ef4444">Package creation failed.</span>'); });
+        return;
+      }
+      if (data.createOS) {
+        printLine('<span style="color:#7c3aed">[AI] Generating custom OS "' + data.createOS + '"...</span>');
+        fetch('/api/sandbox/create-os', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: data.createOS })
+        }).then(function(r2) { return r2.json(); }).then(function(d2) {
+          if (d2.success && d2.os) {
+            addCustomOS(d2.os);
+            printLine('<span style="color:#22c55e">\u2713 Custom OS "' + data.createOS + '" created!</span>');
+            printLine('<span style="color:#94a3b8">' + (d2.os.description || '').slice(0, 150) + '</span>');
+            if (d2.os.exclusive_commands && d2.os.exclusive_commands.length) {
+              printLine('<span style="color:#06b6d4">Exclusive commands:</span>');
+              d2.os.exclusive_commands.forEach(function(c) { printLine('  \u26a1 ' + c.cmd + ' — ' + c.desc); });
+            }
+            printLine('<span style="color:#7c3aed">Run "boot ' + data.createOS + '" to boot it.</span>');
+          } else {
+            printLine('<span style="color:#ef4444">Failed: ' + (d2.error || 'Unknown error') + '</span>');
+          }
+        }).catch(function() { printLine('<span style="color:#ef4444">OS creation failed.</span>'); });
+        return;
+      }
+      if (data.uploadPackage) {
+        var pkgs = getPackages();
+        var found = pkgs.find(function(p) { return p.name === data.uploadPackage; });
+        if (found) {
+          addUploadedPkg(found);
+          printLine('<span style="color:#22c55e">\u2713 "' + data.uploadPackage + '" uploaded to neural repository!</span>');
+        } else {
+          printLine('<span style="color:#ef4444">Package "' + data.uploadPackage + '" not found locally.</span>');
+        }
+        return;
+      }
+      if (data.listPackages) {
+        var pkgs = getPackages();
+        var uploaded = getUploadedPkgs();
+        if (pkgs.length === 0 && uploaded.length === 0) {
+          printLine('<span style="color:#94a3b8">No packages installed.</span>');
+        } else {
+          printLine('<span style="color:#06b6d4">Installed Packages:</span>');
+          pkgs.forEach(function(p) {
+            var typeIcon = { game: '\U0001f3ae', malware: '\u2620', browser: '\U0001f310', engine: '\U0001f50d', app: '\U0001f4e6', tool: '\U0001f527' };
+            printLine('  ' + (typeIcon[p.type] || '\U0001f4e6') + ' ' + p.name + ' v' + (p.version || '1.0.0') + ' <span style="color:#94a3b8">(' + p.type + ')</span>');
+          });
+          if (uploaded.length) {
+            printLine('<span style="color:#7c3aed">Uploaded:</span>');
+            uploaded.forEach(function(p) { printLine('  \u2601 ' + p.name + ' <span style="color:#94a3b8">(' + p.type + ')</span>'); });
+          }
+        }
+        return;
+      }
+      if (data.runPackage) {
+        var pkgs = getPackages();
+        var pkg = pkgs.find(function(p) { return p.name === data.runPackage; });
+        if (pkg) runPackageAction(pkg);
+        else printLine('<span style="color:#ef4444">Package "' + data.runPackage + '" not installed.</span>');
+        return;
+      }
+      if (data.removePackage) {
+        removePackage(data.removePackage);
+        if (state.env.installedPkgs) state.env.installedPkgs = state.env.installedPkgs.filter(function(p) { return p !== data.removePackage; });
+        saveCache();
+        printLine('<span style="color:#22c55e">\u2713 Package "' + data.removePackage + '" removed.</span>');
         return;
       }
       if (data.reboot) {
@@ -993,7 +1319,10 @@ function initSandbox() {
     draw();
   }
 
-  function openBrowser(url) {
+  var currentEngine = null;
+  var currentBrowserPkg = null;
+
+  function openBrowser(url, browserPkg, enginePkg) {
     var overlay = document.getElementById('browser-overlay');
     var urlInput = document.getElementById('browser-url');
     var content = document.getElementById('browser-content');
@@ -1002,11 +1331,107 @@ function initSandbox() {
 
     if (!overlay) return;
     overlay.classList.remove('hidden');
-    if (urlInput) urlInput.value = url.startsWith('brain://') ? url : 'brain://' + url;
-    loadPage(url);
+    currentBrowserPkg = browserPkg || null;
+    currentEngine = enginePkg || null;
 
-    if (goBtn) goBtn.onclick = function() { loadPage(urlInput.value); };
+    var themeColor = '#7c3aed';
+    if (browserPkg && browserPkg.theme) themeColor = browserPkg.theme.primary || themeColor;
+
+    var bar = overlay.querySelector('.browser-bar');
+    if (bar) bar.style.background = themeColor + '22';
+
+    if (urlInput) urlInput.value = (browserPkg && browserPkg.homepage) ? browserPkg.homepage : (url.startsWith('brain://') ? url : 'brain://' + url);
+
+    if (enginePkg) {
+      renderSearchHome(enginePkg);
+    } else if (url) {
+      loadPage(url);
+    } else {
+      renderSearchHome(null);
+    }
+
+    if (goBtn) goBtn.onclick = function() { handleBrowserNav(urlInput.value); };
+    if (urlInput) urlInput.onkeydown = function(e) { if (e.key === 'Enter') handleBrowserNav(urlInput.value); };
     if (closeBtn) closeBtn.onclick = function() { overlay.classList.add('hidden'); };
+  }
+
+  function handleBrowserNav(val) {
+    if (!val) return;
+    if (val.startsWith('brain://') || val.includes('://')) {
+      loadPage(val);
+    } else {
+      doSearch(val);
+    }
+  }
+
+  function renderSearchHome(enginePkg) {
+    var content = document.getElementById('browser-content');
+    if (!content) return;
+    var engineName = enginePkg ? enginePkg.name : 'BrainSearch';
+    var style = enginePkg ? (enginePkg.style || 'neural') : 'neural';
+    var primaryColor = '#7c3aed';
+    var accentColor = '#06b6d4';
+    if (currentBrowserPkg && currentBrowserPkg.theme) {
+      primaryColor = currentBrowserPkg.theme.primary || primaryColor;
+      accentColor = currentBrowserPkg.theme.accent || accentColor;
+    }
+
+    var categoriesHtml = '';
+    if (enginePkg && enginePkg.categories) {
+      categoriesHtml = '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1rem;">';
+      enginePkg.categories.forEach(function(cat) {
+        categoriesHtml += '<span style="background:' + accentColor + '22;color:' + accentColor + ';padding:0.2rem 0.6rem;border-radius:4px;font-size:0.75rem;cursor:pointer;" onclick="document.getElementById(\'browser-url\').value=\'' + cat + '\';document.getElementById(\'browser-go\').click();">' + cat + '</span>';
+      });
+      categoriesHtml += '</div>';
+    }
+
+    var bookmarksHtml = '';
+    if (currentBrowserPkg && currentBrowserPkg.bookmarks) {
+      bookmarksHtml = '<div style="margin-top:1rem;"><span style="color:var(--text-dim);font-size:0.75rem;">Bookmarks:</span><div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.3rem;">';
+      currentBrowserPkg.bookmarks.forEach(function(bm) {
+        bookmarksHtml += '<span style="background:rgba(255,255,255,0.06);padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;cursor:pointer;" onclick="document.getElementById(\'browser-url\').value=\'' + bm.url + '\';document.getElementById(\'browser-go\').click();">' + bm.title + '</span>';
+      });
+      bookmarksHtml += '</div></div>';
+    }
+
+    content.innerHTML = '<div style="text-align:center;padding:2rem 1rem;">' +
+      '<div style="font-size:2.5rem;margin-bottom:0.5rem;">' + (style === 'hacker' ? '\u2620' : style === 'retro' ? '\U0001f4bb' : style === 'corporate' ? '\U0001f3e2' : '\U0001f310') + '</div>' +
+      '<h2 style="color:' + primaryColor + ';font-size:1.5rem;margin-bottom:0.3rem;">' + engineName + '</h2>' +
+      '<p style="color:var(--text-dim);font-size:0.8rem;">' + (enginePkg ? enginePkg.description || 'Custom search engine' : 'Neural web search') + '</p>' +
+      '<div style="margin-top:1rem;max-width:400px;margin-left:auto;margin-right:auto;">' +
+      '<input id="browser-search-input" type="text" placeholder="Search ' + engineName + '..." style="width:100%;background:rgba(255,255,255,0.06);border:1px solid ' + primaryColor + '44;color:var(--text);padding:0.6rem 1rem;border-radius:20px;font-size:0.9rem;outline:none;" onkeydown="if(event.key===\'Enter\'){document.getElementById(\'browser-url\').value=this.value;document.getElementById(\'browser-go\').click();}">' +
+      '</div>' +
+      categoriesHtml + bookmarksHtml +
+      '</div>';
+  }
+
+  function doSearch(query) {
+    var content = document.getElementById('browser-content');
+    if (!content) return;
+    var engineName = currentEngine ? currentEngine.name : 'BrainSearch';
+    content.innerHTML = '<div style="padding:1rem;"><span style="color:#7c3aed">Searching ' + engineName + ' for "' + query + '"...</span></div>';
+    fetch('/api/sandbox/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query, engine: engineName, osName: state.env.osName || 'BrainOS' })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      var results = data.results || [];
+      if (results.length === 0) {
+        content.innerHTML = '<div style="padding:1rem;"><h3 style="color:#7c3aed">' + engineName + '</h3><p style="color:var(--text-dim);">No results for "' + query + '"</p></div>';
+        return;
+      }
+      var html = '<div style="padding:1rem;"><h3 style="color:#7c3aed;margin-bottom:0.5rem;">' + engineName + ' — ' + results.length + ' results for "' + query + '"</h3>';
+      results.forEach(function(r) {
+        html += '<div style="margin-bottom:0.8rem;padding:0.5rem 0.7rem;background:rgba(255,255,255,0.03);border-radius:6px;border-left:3px solid #7c3aed;">' +
+          '<div style="color:#06b6d4;font-size:0.75rem;">' + (r.url || '#') + '</div>' +
+          '<a style="color:#e2e8f0;font-size:0.9rem;font-weight:600;cursor:pointer;text-decoration:none;" onclick="document.getElementById(\'browser-url\').value=\'' + (r.url || '') + '\';document.getElementById(\'browser-go\').click();">' + (r.title || 'Untitled') + '</a>' +
+          '<div style="color:#94a3b8;font-size:0.8rem;margin-top:0.2rem;">' + (r.snippet || '') + '</div>' +
+          (r.category ? '<span style="background:rgba(124,58,237,0.15);color:#a855f7;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.7rem;margin-top:0.2rem;display:inline-block;">' + r.category + '</span>' : '') +
+          '</div>';
+      });
+      html += '</div>';
+      content.innerHTML = html;
+    }).catch(function() { content.innerHTML = '<div style="padding:1rem;color:#ef4444;">Search failed.</div>'; });
   }
 
   function loadPage(url) {

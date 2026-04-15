@@ -458,6 +458,16 @@ body {
 .browser-bar input:focus { outline: none; border-color: var(--accent); }
 .browser-content { flex: 1; overflow-y: auto; padding: 1rem; font-family: var(--mono); font-size: 0.8rem; color: var(--green); background: rgba(5,5,10,0.95); }
 
+.browser-search-result { margin-bottom: 0.8rem; padding: 0.5rem 0.7rem; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 3px solid var(--accent); }
+.browser-search-result a { color: var(--text); font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+.browser-search-result a:hover { color: var(--cyan); }
+.browser-search-result .result-url { color: var(--cyan); font-size: 0.72rem; }
+.browser-search-result .result-snippet { color: var(--text-dim); font-size: 0.78rem; margin-top: 0.2rem; }
+.browser-search-result .result-cat { background: rgba(124,58,237,0.15); color: var(--accent2); padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.65rem; display: inline-block; margin-top: 0.2rem; }
+
+.malware-output { color: var(--red); font-family: var(--mono); animation: glitch 0.1s infinite; }
+@keyframes glitch { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+
 .game-header-btns { display: flex; gap: 0.4rem; }
 
 @media (max-width: 768px) {
