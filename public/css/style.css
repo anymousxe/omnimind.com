@@ -442,3 +442,15 @@ body {
 .pb-pricing { margin-bottom: 1rem; }
 .pb-old-price { color: var(--text-dim); text-decoration: line-through; font-size: 0.85rem; margin-right: 0.5rem; }
 .pb-new-price { color: var(--accent2); font-weight: 700; font-size: 1.3rem; font-family: var(--mono); }
+
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; font-size: 0.85rem; color: var(--accent2); margin-bottom: 0.3rem; font-weight: 600; }
+.sell-input {
+  width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+  color: var(--text); padding: 0.6rem; border-radius: 6px; font-size: 0.9rem; font-family: var(--font);
+}
+.sell-input:focus { outline: none; border-color: var(--accent); }
+textarea.sell-input { resize: vertical; }
+.sell-result { margin-top: 1rem; padding: 0.8rem; border-radius: 8px; font-size: 0.9rem; }
+.sell-result.success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+.sell-result.error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: var(--red); }

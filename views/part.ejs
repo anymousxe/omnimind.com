@@ -22,10 +22,9 @@
   <button class="btn btn-primary btn-lg sync-brain-btn" data-id="<%= part.id %>" data-name="<%= part.name %>" <% if(part.stock <= 0) { %>disabled<% } %>>
     ⚡ Sync to Brain
   </button>
-
-  <div id="sync-progress" class="sync-progress hidden">
-    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-    <div id="sync-status" class="sync-status">Initiating neural handshake...</div>
+  <div class="sync-progress hidden" style="margin-top:1rem;">
+    <div class="progress-bar"><div class="progress-fill"></div></div>
+    <div class="sync-status">Initiating neural handshake...</div>
   </div>
 </div>
 

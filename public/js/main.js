@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  initChat(); initCheckout(); initOSInstaller(); initSandbox();
+  initChat(); initCheckout(); initOSInstaller(); initSandbox(); initSell();
 });
 
 function renderMarkdown(t) {
@@ -32,8 +32,21 @@ function initChat() {
   send.onclick=sendMsg;input.onkeydown=e=>{if(e.key==='Enter')sendMsg()};
 }
 
-function initCheckout(){document.querySelectorAll('.sync-brain-btn, .pb-buy-btn').forEach(b=>{b.onclick=async()=>{const p=document.getElementById('sync-progress'),f=document.getElementById('progress-fill'),s=document.getElementById('sync-status');if(!p)return;b.disabled=true;p.classList.remove('hidden');s.classList.remove('success');f.style.width='0%';
-  for(const[pct,msg]of[[10,'Initiating neural handshake...'],[25,'Scanning cortical topology...'],[40,'Mapping synaptic pathways...'],[55,'Calibrating bio-coolant...'],[70,'Flashing neural firmware...'],[85,'Verifying cortex integrity...'],[95,'Establishing link...'],[100,'✅ Neural Link Established!']]){await new Promise(r=>setTimeout(r,400+Math.random()*300));f.style.width=pct+'%';s.textContent=msg;if(pct===100)s.classList.add('success')}}})}
+function initCheckout(){
+  function bindSyncBtn(btn){
+    btn.onclick=async()=>{
+      const card=btn.closest('.part-detail, .prebuilt-card, .glass-card, body');
+      const p=card?card.querySelector('.sync-progress'):document.getElementById('sync-progress');
+      const f=p?p.querySelector('.progress-fill'):document.getElementById('progress-fill');
+      const s=p?p.querySelector('.sync-status'):document.getElementById('sync-status');
+      if(!p||!f||!s)return;
+      btn.disabled=true;p.classList.remove('hidden');s.classList.remove('success');f.style.width='0%';
+      for(const[pct,msg]of[[10,'Initiating neural handshake...'],[25,'Scanning cortical topology...'],[40,'Mapping synaptic pathways...'],[55,'Calibrating bio-coolant...'],[70,'Flashing neural firmware...'],[85,'Verifying cortex integrity...'],[95,'Establishing link...'],[100,'✅ Neural Link Established!']]){await new Promise(r=>setTimeout(r,400+Math.random()*300));f.style.width=pct+'%';s.textContent=msg;if(pct===100)s.classList.add('success')}
+      try{await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:[btn.dataset.id||btn.dataset.name]})})}catch(e){}
+    };
+  }
+  document.querySelectorAll('.sync-brain-btn, .pb-buy-btn').forEach(bindSyncBtn);
+}
 
 function initOSInstaller(){const o=document.getElementById('terminal-overlay'),out=document.getElementById('terminal-output'),cl=document.getElementById('terminal-close');if(!o)return;cl.onclick=()=>o.classList.add('hidden');
   document.querySelectorAll('.os-flash-btn').forEach(b=>{b.onclick=async e=>{e.preventDefault();e.stopPropagation();const{name:n,version:v,kernel:k,size:s}=b.dataset;o.classList.remove('hidden');out.textContent='';
@@ -176,4 +189,22 @@ function initSandbox(){
   async function loadPage(url){const clean=url.replace('brain://','').replace('https://','');browserContent.textContent='Loading...';
     try{const r=await fetch(`/api/sandbox/browser?url=${encodeURIComponent(clean)}`);const d=await r.json();browserContent.innerHTML=`<div style="color:var(--accent2);font-weight:bold;margin-bottom:0.5rem">${d.title}</div><pre style="white-space:pre-wrap;color:var(--green)">${d.content}</pre>`}
     catch(e){browserContent.textContent='Failed to load: '+url}}
+}
+
+function initSell(){
+  const btn=document.getElementById('sell-submit'),result=document.getElementById('sell-result');
+  if(!btn)return;
+  btn.onclick=async()=>{
+    const name=document.getElementById('sell-name').value.trim();
+    const category=document.getElementById('sell-category').value;
+    const price=parseFloat(document.getElementById('sell-price').value);
+    const specsRaw=document.getElementById('sell-specs').value.trim();
+    if(!name||!price){result.className='sell-result error';result.classList.remove('hidden');result.textContent='Name and price required.';return}
+    const specs={};specsRaw.split('\n').forEach(l=>{const[k,v]=l.split(':').map(s=>s.trim());if(k&&v)specs[k]=v});
+    btn.disabled=true;btn.textContent='Listing...';
+    try{const r=await fetch('/api/sell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,category,price,specs})});const d=await r.json();
+      if(d.success){result.className='sell-result success';result.classList.remove('hidden');result.innerHTML=`✅ Listed! <strong>${d.part.name}</strong> (ID: ${d.part.id}) — ₿${d.part.price.toFixed(2)} is now on the marketplace. <a href="/gallery?category=${encodeURIComponent(d.part.category)}" style="color:var(--cyan)">View in Gallery →</a>`;document.getElementById('sell-name').value='';document.getElementById('sell-price').value='';document.getElementById('sell-specs').value=''}
+      else{result.className='sell-result error';result.classList.remove('hidden');result.textContent=d.error||'Failed to list.'}
+    }catch(e){result.className='sell-result error';result.classList.remove('hidden');result.textContent='Server error.'}
+    btn.disabled=false;btn.textContent='🛒 List on Marketplace'};
 }
