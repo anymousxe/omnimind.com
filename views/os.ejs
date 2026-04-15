@@ -2,7 +2,7 @@
 
 <div class="os-grid">
   <% distros.forEach(d => { %>
-    <div class="os-card glass-card" data-distro-id="<%= d.id %>">
+    <a href="/os/<%= d.id %>" class="os-card glass-card" style="text-decoration:none;color:var(--text)">
       <div class="os-header">
         <h3><%= d.name %></h3>
         <span class="os-version">v<%= d.version %></span>
@@ -13,10 +13,7 @@
         <span class="os-size">📏 <%= (d.size_mb / 1024).toFixed(1) %> GB</span>
         <span class="os-price"><%= d.price > 0 ? '₿ ' + d.price.toFixed(2) : 'Free' %></span>
       </div>
-      <button class="btn btn-primary btn-sm os-flash-btn" data-name="<%= d.name %>" data-version="<%= d.version %>" data-kernel="<%= d.kernel %>" data-size="<%= d.size_mb %>">
-        Flash to Brain
-      </button>
-    </div>
+    </a>
   <% }) %>
 </div>
 

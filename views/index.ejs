@@ -17,7 +17,7 @@
 <section class="categories-section">
   <h2 class="section-title">Neural Subsystems</h2>
   <div class="cat-grid">
-    <% const icons = {'Synaptic Accelerators':'⚡','Bio-Cooling':'❄️','Cortical GPUs':'🖥️','Frontal Lobe CPUs':'🧮','Memory Caches':'💾','Neuro-Link PSU':'🔌'}; %>
+    <% const icons = {'Synaptic Accelerators':'⚡','Bio-Cooling':'❄️','Cortical GPUs':'🖥️','Frontal Lobe CPUs':'🧮','Memory Caches':'💾','Neuro-Link PSU':'🔌','Internet Chips':'🌐'}; %>
     <% categories.forEach(cat => { %>
       <a href="/gallery?category=<%= encodeURIComponent(cat) %>" class="cat-card glass-card">
         <div class="cat-icon"><%= icons[cat] || '🧠' %></div>

@@ -4,6 +4,23 @@ document.addEventListener('DOMContentLoaded', () => {
   initOSInstaller();
 });
 
+function renderMarkdown(text) {
+  let html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/^### (.+)$/gm, '<h4 class="md-h">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 class="md-h">$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2 class="md-h">$1</h2>')
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code class="md-code">$1</code>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/s, '<ul class="md-list">$1</ul>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+  return '<p>' + html + '</p>';
+}
+
 function initChat() {
   const bubble = document.getElementById('chat-bubble');
   const panel = document.getElementById('chat-panel');
@@ -19,11 +36,18 @@ function initChat() {
   bubble.addEventListener('click', () => { panel.classList.remove('hidden'); bubble.style.display = 'none'; });
   close.addEventListener('click', () => { panel.classList.add('hidden'); bubble.style.display = 'flex'; });
 
-  function addMsg(text, cls) {
+  function addMsg(html, cls) {
     const d = document.createElement('div');
     d.className = 'chat-msg ' + cls;
-    d.textContent = text;
+    d.innerHTML = html;
     messages.appendChild(d);
+    messages.scrollTop = messages.scrollHeight;
+    return d;
+  }
+
+  function appendToMsg(el, text) {
+    el.innerHTML = renderMarkdown(el._raw + text);
+    el._raw += text;
     messages.scrollTop = messages.scrollHeight;
   }
 
@@ -33,11 +57,14 @@ function initChat() {
     addMsg(text, 'user');
     history.push({ role: 'user', content: text });
     input.value = '';
+    input.disabled = true;
+    send.disabled = true;
 
-    const typingEl = document.createElement('div');
-    typingEl.className = 'chat-msg assistant';
-    typingEl.textContent = 'Thinking...';
-    messages.appendChild(typingEl);
+    const assistantEl = document.createElement('div');
+    assistantEl.className = 'chat-msg assistant streaming';
+    assistantEl._raw = '';
+    assistantEl.innerHTML = '<span class="typing-cursor">▌</span>';
+    messages.appendChild(assistantEl);
     messages.scrollTop = messages.scrollHeight;
 
     try {
@@ -46,21 +73,49 @@ function initChat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, history })
       });
-      const data = await resp.json();
-      typingEl.remove();
 
-      if (data.tool_results && data.tool_results.length) {
-        data.tool_results.forEach(tr => {
-          addMsg(`[Tool: ${tr.tool}] → ${JSON.stringify(tr.result)}`, 'tool-result');
-        });
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const json = JSON.parse(line.slice(6));
+            if (json.type === 'text') {
+              appendToMsg(assistantEl, json.data);
+            } else if (json.type === 'tool') {
+              const actionEl = document.createElement('div');
+              actionEl.className = 'chat-msg action-msg';
+              actionEl.innerHTML = `<span class="action-icon">⚡</span> ${json.data.action === 'add_part' ? 'Manufactured custom Neural-Module' : json.data.action === 'remove_part' ? 'Decommissioned part' : json.data.action === 'lookup_compatibility' ? 'Checked compatibility' : json.data.action === 'search_parts' ? 'Searched catalog' : json.data.action}`;
+              messages.appendChild(actionEl);
+              messages.scrollTop = messages.scrollHeight;
+            } else if (json.type === 'done') {
+              assistantEl.classList.remove('streaming');
+            } else if (json.type === 'error') {
+              appendToMsg(assistantEl, '\n\n⚠️ ' + json.data);
+            }
+          } catch(_) {}
+        }
       }
 
-      addMsg(data.reply || 'No response.', 'assistant');
-      history.push({ role: 'assistant', content: data.reply || '' });
-    } catch (e) {
-      typingEl.remove();
-      addMsg('⚠️ Neural link disrupted.', 'system');
+      assistantEl.classList.remove('streaming');
+      history.push({ role: 'assistant', content: assistantEl._raw });
+    } catch(e) {
+      assistantEl.classList.remove('streaming');
+      appendToMsg(assistantEl, '\n\n⚠️ Neural pathway disrupted.');
     }
+
+    input.disabled = false;
+    send.disabled = false;
+    input.focus();
   }
 
   send.addEventListener('click', sendMsg);
@@ -104,7 +159,7 @@ function initCheckout() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ items: [btn.dataset.id] })
         });
-      } catch (e) {}
+      } catch(e) {}
     });
   });
 }
@@ -119,7 +174,9 @@ function initOSInstaller() {
   closeBtn.addEventListener('click', () => { overlay.classList.add('hidden'); });
 
   document.querySelectorAll('.os-flash-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       const { name, version, kernel, size } = btn.dataset;
       overlay.classList.remove('hidden');
       output.textContent = '';

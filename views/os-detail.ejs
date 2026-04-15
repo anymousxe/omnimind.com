@@ -1,0 +1,58 @@
+<div class="part-detail glass-card">
+  <div class="pd-header">
+    <a href="/os" class="back-link">← Back to OS Center</a>
+  </div>
+  <h1 class="pd-name"><%= distro.name %></h1>
+  <div class="os-detail-meta">
+    <span class="os-version-lg">v<%= distro.version %></span>
+    <span class="os-kernel-lg">Kernel: <%= distro.kernel %></span>
+  </div>
+  <p class="os-desc-lg"><%= distro.description %></p>
+  <div class="pd-specs">
+    <h3>System Details</h3>
+    <table class="specs-table">
+      <tr><td class="spec-key">Version</td><td class="spec-val"><%= distro.version %></td></tr>
+      <tr><td class="spec-key">Kernel</td><td class="spec-val"><%= distro.kernel %></td></tr>
+      <tr><td class="spec-key">Image Size</td><td class="spec-val"><%= (distro.size_mb / 1024).toFixed(1) %> GB</td></tr>
+      <tr><td class="spec-key">Price</td><td class="spec-val"><%= distro.price > 0 ? '₿ ' + distro.price.toFixed(2) : 'Free' %></td></tr>
+    </table>
+  </div>
+
+  <button class="btn btn-primary btn-lg os-flash-btn" data-name="<%= distro.name %>" data-version="<%= distro.version %>" data-kernel="<%= distro.kernel %>" data-size="<%= distro.size_mb %>">
+    ⚡ Flash to Brain
+  </button>
+
+  <div id="sync-progress" class="sync-progress hidden">
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div id="sync-status" class="sync-status">Initiating neural handshake...</div>
+  </div>
+</div>
+
+<div id="terminal-overlay" class="terminal-overlay hidden">
+  <div class="terminal-window glass-card">
+    <div class="terminal-bar">
+      <span>BrainOS Neural Flash Terminal</span>
+      <button id="terminal-close">&times;</button>
+    </div>
+    <div id="terminal-output" class="terminal-output"></div>
+  </div>
+</div>
+
+<section class="compat-section">
+  <h3 class="section-title">More Operating Systems</h3>
+  <div class="os-grid">
+    <% related.forEach(d => { %>
+      <a href="/os/<%= d.id %>" class="os-card glass-card" style="text-decoration:none;color:var(--text)">
+        <div class="os-header">
+          <h3><%= d.name %></h3>
+          <span class="os-version">v<%= d.version %></span>
+        </div>
+        <div class="os-kernel">Kernel: <%= d.kernel %></div>
+        <div class="os-meta">
+          <span class="os-size">📏 <%= (d.size_mb / 1024).toFixed(1) %> GB</span>
+          <span class="os-price"><%= d.price > 0 ? '₿ ' + d.price.toFixed(2) : 'Free' %></span>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+</section>
