@@ -594,9 +594,17 @@ function initSandbox() {
     if (!raw || !raw.trim()) return;
     raw = raw.trim();
 
-    var allowedBeforeBoot = ['help', 'install-os', 'boot', 'my-os', 'clear', 'agent-name'];
+    var allowedBeforeBoot = ['help', 'install-os', 'boot', 'my-os', 'clear', 'agent-name', 'pkg-create', 'pkg-list', 'create-os'];
     var parts = raw.split(/\s+/);
     var cmd = parts[0];
+
+    if (cmd === 'pkg' && parts[1]) {
+      var sub = parts[1];
+      if (['create', 'upload', 'list', 'run', 'remove'].indexOf(sub) >= 0) {
+        cmd = 'pkg-' + sub;
+        parts = [cmd].concat(parts.slice(2));
+      }
+    }
 
     if (!booted && allowedBeforeBoot.indexOf(cmd) === -1) {
       printLine('<span style="color:#eab308">No OS booted. Use "install-os" to download, then "boot &lt;name&gt;" to boot.</span>');
